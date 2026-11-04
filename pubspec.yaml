@@ -1,0 +1,32 @@
+name: face_detection
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UPGRADED FOR iOS SIMULATOR COMPATIBILITY:
+  camera: ^0.11.0
+  google_mlkit_face_detection: ^0.15.1
+  permission_handler: ^11.0.1
+
+  cupertino_icons: ^1.0.8
+  path_provider: ^2.1.6
+  sqflite: ^2.4.5
+  share_plus: ^13.3.1
+  face_verification: ^0.3.9
+  image: ^4.9.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

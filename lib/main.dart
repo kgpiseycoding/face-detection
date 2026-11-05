@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'face_enrollment.dart';
 import 'face_identity_service.dart';
 import 'face_store.dart';
-import 'verify_face_screen.dart';
+
 
 abstract final class AppTokens {
   static const brand = Color(0xFF315CDB);
@@ -499,6 +499,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Face Detection',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: UserListScreen(store: store, identityService: identityService),
     );
@@ -605,27 +606,6 @@ class _UserListScreenState extends State<UserListScreen> {
     if (enrolled == true && mounted) await _loadUsers();
   }
 
-  Future<void> _verifyFace() async {
-    if (_recognitionError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Face recognition is unavailable. See the status message for details.',
-          ),
-        ),
-      );
-      return;
-    }
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => VerifyFaceScreen(
-          identityService: widget.identityService,
-          users: _users,
-        ),
-      ),
-    );
-  }
-
   Future<void> _viewUserPhotos(RegisteredUser user) async {
     if (!user.faceEnrolled) return;
     await Navigator.of(context).push<void>(
@@ -651,147 +631,117 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  Future<void> _showRecognitionInfo() async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('On-device face recognition'),
-        content: const Text(
-          'User names and enrolled face photos are saved in this app’s local '
-          'storage. A face-embedding model compares the enrolled samples '
-          'and checks a new photo against them. Photos and matching data stay '
-          'on this phone and are not sent to a server. Recognition can make '
-          'mistakes and must not be used by itself for security or access '
-          'decisions.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leadingWidth: 64,
-        leading: const Padding(
-          padding: EdgeInsets.only(left: AppTokens.lg),
-          child: Center(child: BrandMark(size: 36)),
-        ),
-        title: const Text('Users'),
-        actions: [
-          AppIconButton(
-            tooltip: 'Verify a face',
-            onPressed: _verifyFace,
-            icon: const Icon(Icons.face_retouching_natural),
-          ),
-          AppIconButton(
-            tooltip: 'About face recognition',
-            onPressed: _showRecognitionInfo,
-            icon: const Icon(Icons.info_outline),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: AppTokens.xs,
-              right: AppTokens.md,
-            ),
-            child: FilledButton.icon(
+      // No AppBar to remove the huge empty gap at the top
+      floatingActionButton: _users.isEmpty && !_isLoading
+          ? null
+          : FloatingActionButton(
               onPressed: _addUser,
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Add user'),
+              tooltip: 'Add user',
+              backgroundColor: AppTokens.brand,
+              foregroundColor: Colors.white,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add),
             ),
-          ),
-        ],
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? _LoadError(message: _error!, onRetry: _loadUsers)
+            : RefreshIndicator(
+                onRefresh: _loadUsers,
+                child: _users.isEmpty
+                    ? CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _EmptyUsersState(onAddUser: _addUser),
+                          ),
+                        ],
+                      )
+                    : CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppTokens.xl,
+                              AppTokens.xxl, // Breathing room from top edge
+                              AppTokens.xl,
+                              // Bottom space so FAB doesn't cover last card
+                              AppTokens.xxxl + AppTokens.xxl, 
+                            ),
+                            sliver: SliverList(
+                              delegate: SliverChildListDelegate([
+                                SectionHeader(
+                                  title: 'People',
+                                  subtitle:
+                                      '${_users.length} ${_users.length == 1 ? 'profile' : 'profiles'} stored on this device',
+                                ),
+                                const SizedBox(height: AppTokens.lg),
+                                if (_recognitionError != null) ...[
+                                  InfoCard(
+                                    icon: Icons.warning_amber_rounded,
+                                    title: 'Face recognition couldn’t start.',
+                                    body:
+                                        'Rebuild and reinstall the app, then try again.',
+                                    tint: const Color(0xFFFFF3DF),
+                                    iconColor: AppTokens.warning,
+                                    trailing: AppIconButton(
+                                      tooltip: 'Try again',
+                                      onPressed: _loadUsers,
+                                      icon: const Icon(Icons.refresh),
+                                      color: AppTokens.warning,
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: AppTokens.xs,
+                                      ),
+                                      child: TextButton(
+                                        onPressed:
+                                            _showRecognitionErrorDetails,
+                                        child:
+                                            const Text('Technical details'),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppTokens.md),
+                                ],
+                                for (
+                                  var index = 0;
+                                  index < _users.length;
+                                  index++
+                                )
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: index == _users.length - 1
+                                          ? 0
+                                          : AppTokens.md,
+                                    ),
+                                    child: _UserCard(
+                                      user: _users[index],
+                                      onTap: _users[index].faceEnrolled
+                                          ? () =>
+                                              _viewUserPhotos(_users[index])
+                                          : null,
+                                      onViewPhotos: () =>
+                                          _viewUserPhotos(_users[index]),
+                                      onEnroll: () =>
+                                          _enrollUser(_users[index]),
+                                    ),
+                                  ),
+                              ]),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _LoadError(message: _error!, onRetry: _loadUsers)
-          : RefreshIndicator(
-              onRefresh: _loadUsers,
-              child: _users.isEmpty
-                  ? CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: _EmptyUsersState(onAddUser: _addUser),
-                        ),
-                      ],
-                    )
-                  : CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppTokens.xl,
-                            AppTokens.xl,
-                            AppTokens.xl,
-                            AppTokens.xxl,
-                          ),
-                          sliver: SliverList(
-                            delegate: SliverChildListDelegate([
-                              SectionHeader(
-                                title: 'People',
-                                subtitle:
-                                    '${_users.length} ${_users.length == 1 ? 'profile' : 'profiles'} stored on this device',
-                              ),
-                              const SizedBox(height: AppTokens.lg),
-                              if (_recognitionError != null) ...[
-                                InfoCard(
-                                  icon: Icons.warning_amber_rounded,
-                                  title: 'Face recognition couldn’t start.',
-                                  body: 'Rebuild and reinstall the app, then try again.',
-                                  tint: const Color(0xFFFFF3DF),
-                                  iconColor: AppTokens.warning,
-                                  trailing: AppIconButton(
-                                    tooltip: 'Try again',
-                                    onPressed: _loadUsers,
-                                    icon: const Icon(Icons.refresh),
-                                    color: AppTokens.warning,
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: _showRecognitionErrorDetails,
-                                    child: const Text('Technical details'),
-                                  ),
-                                ),
-                                const SizedBox(height: AppTokens.sm),
-                              ],
-                              for (
-                                var index = 0;
-                                index < _users.length;
-                                index++
-                              )
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: index == _users.length - 1
-                                        ? 0
-                                        : AppTokens.md,
-                                  ),
-                                  child: _UserCard(
-                                    user: _users[index],
-                                    onTap: _users[index].faceEnrolled
-                                        ? () => _viewUserPhotos(_users[index])
-                                        : null,
-                                    onViewPhotos: () =>
-                                        _viewUserPhotos(_users[index]),
-                                    onEnroll: () => _enrollUser(_users[index]),
-                                  ),
-                                ),
-                            ]),
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
     );
   }
 }
@@ -838,34 +788,37 @@ class _UserCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: AppTokens.sm),
-                    StatusChip(
-                      label: enrolled ? 'Face enrolled' : 'Face not saved',
-                      icon: enrolled
-                          ? Icons.check_circle_outline
-                          : Icons.face_outlined,
-                      color: enrolled
-                          ? AppTokens.success
-                          : AppTokens.textSecondary,
-                      backgroundColor: enrolled
-                          ? const Color(0xFFE6F5EE)
-                          : AppTokens.surface,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: StatusChip(
+                        label: enrolled ? 'Face enrolled' : 'Face not saved',
+                        icon: enrolled
+                            ? Icons.check_circle_outline
+                            : Icons.face_outlined,
+                        color: enrolled
+                            ? AppTokens.success
+                            : AppTokens.textSecondary,
+                        backgroundColor: enrolled
+                            ? const Color(0xFFE6F5EE)
+                            : AppTokens.surface,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppTokens.xs),
+              const SizedBox(width: AppTokens.sm),
               if (enrolled)
                 AppIconButton(
                   tooltip: 'View ${user.name} face photos',
                   onPressed: onViewPhotos,
-                  icon: const Icon(Icons.photo_library_outlined),
+                  icon: const Icon(Icons.photo_library_outlined, size: 20),
                 ),
               AppIconButton(
                 tooltip: enrolled
                     ? 'Re-enroll ${user.name}'
                     : 'Enroll ${user.name}',
                 onPressed: onEnroll,
-                icon: const Icon(Icons.face_retouching_natural),
+                icon: const Icon(Icons.face_retouching_natural, size: 20),
                 color: AppTokens.brand,
               ),
             ],
@@ -1035,7 +988,8 @@ class _AddUserScreenState extends State<AddUserScreen> {
             const InfoCard(
               icon: Icons.photo_camera_outlined,
               title: '6 face photos required',
-              body: 'Looking forward, blinking, and turning to both sides. Photos stay on this phone.',
+              body:
+                  'Looking forward, blinking, and turning to both sides. Photos stay on this phone.',
             ),
           ],
         ),
@@ -1178,11 +1132,6 @@ class _EnrolledFacePhotosScreenState extends State<EnrolledFacePhotosScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.user.name} face photos'),
-        leadingWidth: 64,
-        leading: const Padding(
-          padding: EdgeInsets.only(left: AppTokens.lg),
-          child: Center(child: BrandMark(size: 36)),
-        ),
         actions: [
           AppIconButton(
             tooltip: 'Share face photos',
@@ -1195,6 +1144,7 @@ class _EnrolledFacePhotosScreenState extends State<EnrolledFacePhotosScreen> {
                   )
                 : const Icon(Icons.share_outlined),
           ),
+          const SizedBox(width: AppTokens.sm),
         ],
       ),
       body: widget.user.faceImagePaths.isEmpty
@@ -1466,9 +1416,9 @@ class _EnrollmentScreenState extends State<EnrollmentScreen> {
   @override
   Widget build(BuildContext context) {
     return _FaceScanScreen(
-      title: widget.user.name,
+      title: '',
       onCaptured: _saveSample,
-      completedButtonLabel: 'Done',
+      completedButtonLabel: 'បញ្ចប់',
       onCompleted: () => Navigator.of(context).pop(true),
     );
   }
@@ -1498,8 +1448,12 @@ class _FaceScanScreen extends StatefulWidget {
 
 class _FaceScanScreenState extends State<_FaceScanScreen> {
   CameraController? _controller;
-  String _status = 'Initializing camera...';
+  List<CameraDescription> _cameras = const [];
+  CameraLensDirection? _lensDirection;
+  String _status = 'កំពុងចាប់ផ្តើមកាមេរ៉ា...';
   bool _permissionPermanentlyDenied = false;
+  bool _cameraPermissionBlocked = false;
+  bool _isSwitchingCamera = false;
   bool _captureComplete = false;
   bool _captureFailed = false;
   int _currentStep = 1;
@@ -1528,8 +1482,9 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
       if (requested.isPermanentlyDenied) {
         setState(() {
           _permissionPermanentlyDenied = true;
-          _status =
-              'Camera permission is permanently denied. Enable it in Settings.';
+          _cameraPermissionBlocked = true;
+          _status = 'ការអនុញ្ញាតប្រើកាមេរ៉ាត្រូវបានបិទជាអចិន្ត្រៃយ៍។ '
+              'សូមបើកវានៅក្នុងការកំណត់។';
         });
         return;
       }
@@ -1539,33 +1494,38 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     if (status.isPermanentlyDenied) {
       setState(() {
         _permissionPermanentlyDenied = true;
-        _status =
-            'Camera permission is permanently denied. Enable it in Settings.';
+        _cameraPermissionBlocked = true;
+        _status = 'ការអនុញ្ញាតប្រើកាមេរ៉ាត្រូវបានបិទជាអចិន្ត្រៃយ៍។ '
+            'សូមបើកវានៅក្នុងការកំណត់។';
       });
       return;
     }
 
     setState(() {
       _permissionPermanentlyDenied = false;
-      _status = 'Camera permission denied';
+      _cameraPermissionBlocked = true;
+      _status = 'មិនបានអនុញ្ញាតឱ្យប្រើកាមេរ៉ាទេ។';
     });
   }
 
-  Future<void> _initializeCamera() async {
+  Future<void> _initializeCamera({CameraLensDirection? lensDirection}) async {
     CameraController? controller;
     try {
       final cameras = await availableCameras();
+      _cameras = cameras;
       if (cameras.isEmpty) {
-        if (mounted) setState(() => _status = 'No camera available.');
+        if (mounted) setState(() => _status = 'មិនមានកាមេរ៉ាទេ។');
         return;
       }
 
-      final front = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
+      final selectedCamera = cameras.firstWhere(
+        (camera) =>
+            camera.lensDirection ==
+            (lensDirection ?? CameraLensDirection.front),
         orElse: () => cameras.first,
       );
       controller = CameraController(
-        front,
+        selectedCamera,
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: Platform.isIOS
@@ -1580,13 +1540,48 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
       }
       setState(() {
         _controller = controller;
-        _status = 'Align your face inside the oval';
+        _lensDirection = selectedCamera.lensDirection;
+        _cameraPermissionBlocked = false;
+        _status = 'សូមដាក់មុខនៅកណ្ដាលរង្វង់។';
         _permissionPermanentlyDenied = false;
       });
     } catch (error) {
       await controller?.dispose();
       if (!mounted) return;
-      setState(() => _status = 'Unable to initialize camera: $error');
+      setState(() => _status = 'មិនអាចចាប់ផ្តើមកាមេរ៉ាបានទេ៖ $error');
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    if (_isSwitchingCamera) return;
+    final nextDirection = _lensDirection == CameraLensDirection.front
+        ? CameraLensDirection.back
+        : CameraLensDirection.front;
+    final matchingCameras = _cameras.where(
+      (camera) => camera.lensDirection == nextDirection,
+    );
+    if (matchingCameras.isEmpty) return;
+    final nextCamera = matchingCameras.first;
+
+    final previousController = _controller;
+    setState(() {
+      _isSwitchingCamera = true;
+      _controller = null;
+      _status = 'កំពុងប្តូរកាមេរ៉ា...';
+      _scannerGeneration++;
+    });
+    try {
+      if (previousController?.value.isStreamingImages ?? false) {
+        await previousController!.stopImageStream();
+      }
+      await previousController?.dispose();
+      await _initializeCamera(lensDirection: nextCamera.lensDirection);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _status = 'មិនអាចប្តូរកាមេរ៉ាបានទេ៖ $error');
+      }
+    } finally {
+      if (mounted) setState(() => _isSwitchingCamera = false);
     }
   }
 
@@ -1600,9 +1595,11 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
 
     setState(() {
       _permissionPermanentlyDenied = result.isPermanentlyDenied;
+      _cameraPermissionBlocked = !result.isGranted;
       _status = result.isPermanentlyDenied
-          ? 'Camera permission is permanently denied. Enable it in Settings.'
-          : 'Camera permission denied';
+          ? 'ការអនុញ្ញាតប្រើកាមេរ៉ាត្រូវបានបិទជាអចិន្ត្រៃយ៍។ '
+                'សូមបើកវានៅក្នុងការកំណត់។'
+          : 'មិនបានអនុញ្ញាតឱ្យប្រើកាមេរ៉ាទេ។';
     });
   }
 
@@ -1610,8 +1607,8 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     if (!mounted) return;
     setState(() {
       _status = step.next == null
-          ? 'Saving face setup on this phone...'
-          : 'Saving step ${step.number}...';
+          ? 'កំពុងរក្សាទុកការចុះឈ្មោះមុខក្នុងទូរស័ព្ទនេះ...'
+          : 'កំពុងរក្សាទុកជំហាន ${step.number}...';
       _captureFailed = false;
     });
     try {
@@ -1619,11 +1616,11 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
       if (!mounted) return;
       setState(() {
         if (step.next == null) {
-          _status = 'Face setup saved on this phone.';
+          _status = 'ការចុះឈ្មោះមុខត្រូវបានរក្សាទុកក្នុងទូរស័ព្ទនេះ។';
           _captureComplete = true;
         } else {
-          _status =
-              'Step ${step.number} saved. Next: ${step.next!.instruction}';
+          _status = 'បានរក្សាទុកជំហាន ${step.number}។ '
+              'បន្ទាប់៖ ${step.next!.instruction}';
           _currentStep = step.next!.number;
         }
       });
@@ -1639,7 +1636,7 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
 
   void _retryCapture() {
     setState(() {
-      _status = 'Align your face inside the oval';
+      _status = 'សូមដាក់មុខនៅកណ្ដាលរង្វង់។';
       _captureFailed = false;
       _currentStep = 1;
       _scannerGeneration++;
@@ -1661,7 +1658,7 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     final controller = _controller;
     final permissionBlocked =
         controller == null &&
-        (_status.contains('permission') || _permissionPermanentlyDenied);
+        (_cameraPermissionBlocked || _permissionPermanentlyDenied);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -1671,6 +1668,23 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
+        actions: [
+          if (_cameras.any(
+                (camera) => camera.lensDirection == CameraLensDirection.front,
+              ) &&
+              _cameras.any(
+                (camera) => camera.lensDirection == CameraLensDirection.back,
+              ))
+            AppIconButton(
+              tooltip: _lensDirection == CameraLensDirection.front
+                  ? 'ប្តូរទៅកាមេរ៉ាខាងក្រោយ'
+                  : 'ប្តូរទៅកាមេរ៉ាខាងមុខ',
+              onPressed: _isSwitchingCamera ? null : _switchCamera,
+              icon: const Icon(Icons.autorenew_rounded),
+              color: Colors.white,
+            ),
+          const SizedBox(width: AppTokens.sm),
+        ],
       ),
       body: controller == null
           ? Center(
@@ -1698,12 +1712,13 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
                 FaceEnrollmentWidget(
                   key: ValueKey(_scannerGeneration),
                   controller: controller,
+                  initialStep: FaceEnrollmentStep.values[_currentStep - 1],
                   onCaptured: _handleCapture,
                   onCompleted: () {},
                   onError: (error) {
                     if (mounted) {
                       setState(() {
-                        _status = 'Face detection error: $error';
+                        _status = 'កំហុសក្នុងការស្គាល់មុខ៖ $error';
                         _captureFailed = true;
                       });
                     }
@@ -1780,7 +1795,9 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
                     Text(
                       _captureComplete
                           ? _status
-                          : 'Step $_currentStep of ${FaceEnrollmentStep.total} · ${_stepTitle(_currentStep)}',
+                          : 'ជំហាន $_currentStep ក្នុង '
+                                '${FaceEnrollmentStep.total} · '
+                                '${_stepTitle(_currentStep)}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
@@ -1804,7 +1821,7 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
                         child: Text(
                           _captureComplete
                               ? widget.completedButtonLabel
-                              : 'Try again',
+                              : 'ព្យាយាមម្តងទៀត',
                         ),
                       ),
                     ],
@@ -1815,14 +1832,8 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     );
   }
 
-  String _stepTitle(int step) => switch (step) {
-    1 => 'Look at the camera',
-    2 => 'Blink both eyes',
-    3 => 'Look up',
-    4 => 'Look down',
-    5 => 'Turn right',
-    _ => 'Turn left',
-  };
+  String _stepTitle(int step) =>
+      FaceEnrollmentStep.values[step - 1].instruction;
 }
 
 class _CameraPermissionState extends StatelessWidget {
@@ -1859,8 +1870,8 @@ class _CameraPermissionState extends StatelessWidget {
           const SizedBox(height: AppTokens.xl),
           Text(
             permanentlyDenied
-                ? 'Allow camera in Settings'
-                : 'Camera access needed',
+                ? 'អនុញ្ញាតឱ្យប្រើកាមេរ៉ានៅក្នុងការកំណត់'
+                : 'ត្រូវការការអនុញ្ញាតប្រើកាមេរ៉ា',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall
                 ?.copyWith(color: Colors.white),
@@ -1868,8 +1879,8 @@ class _CameraPermissionState extends StatelessWidget {
           const SizedBox(height: AppTokens.sm),
           Text(
             permanentlyDenied
-                ? 'Enable camera access in Settings to capture this person’s face.'
-                : 'Allow camera access to guide and save six face photos on this phone.',
+                ? 'សូមអនុញ្ញាតឱ្យប្រើកាមេរ៉ានៅក្នុងការកំណត់ ដើម្បីថតរូបមុខ។'
+                : 'សូមអនុញ្ញាតឱ្យប្រើកាមេរ៉ា ដើម្បីណែនាំការថត និងរក្សាទុករូបមុខទាំងប្រាំមួយក្នុងទូរស័ព្ទនេះ។',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge
                 ?.copyWith(color: Colors.white70),
@@ -1880,7 +1891,9 @@ class _CameraPermissionState extends StatelessWidget {
             icon: Icon(
               permanentlyDenied ? Icons.settings_outlined : Icons.camera_alt,
             ),
-            label: Text(permanentlyDenied ? 'Open Settings' : 'Allow camera'),
+            label: Text(
+              permanentlyDenied ? 'បើកការកំណត់' : 'អនុញ្ញាតប្រើកាមេរ៉ា',
+            ),
           ),
         ],
       ),

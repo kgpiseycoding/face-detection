@@ -40,6 +40,15 @@ void main() {
       reason: 'The scanner must distinguish startup from a completed scan.',
     );
     expect(FaceEnrollmentStep.front.next, FaceEnrollmentStep.blink);
+    expect(FaceEnrollmentStep.front.instruction, 'សូមមើលត្រង់ទៅកាមេរ៉ា');
+    expect(
+      FaceEnrollmentStep.blink.instruction,
+      'សូមព្រិចភ្នែក រួចបើកភ្នែកវិញ',
+    );
+    expect(FaceEnrollmentStep.lookUp.instruction, 'សូមងើបមុខឡើង');
+    expect(FaceEnrollmentStep.lookDown.instruction, 'សូមឱនមុខចុះ');
+    expect(FaceEnrollmentStep.turnRight.instruction, 'សូមបង្វែរមុខទៅស្តាំ');
+    expect(FaceEnrollmentStep.turnLeft.instruction, 'សូមបង្វែរមុខទៅឆ្វេង');
     expect(FaceEnrollmentStep.blink.next, FaceEnrollmentStep.lookUp);
     expect(FaceEnrollmentStep.lookUp.next, FaceEnrollmentStep.lookDown);
     expect(FaceEnrollmentStep.lookDown.next, FaceEnrollmentStep.turnRight);

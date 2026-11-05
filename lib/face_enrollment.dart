@@ -11,12 +11,12 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'face_photo_normalizer.dart';
 
 enum FaceEnrollmentStep {
-  front('Look at the camera'),
-  blink('Blink both eyes, then open them'),
-  lookUp('Look up'),
-  lookDown('Look down'),
-  turnRight('Turn your head to the right'),
-  turnLeft('Turn your head to the left');
+  front('សូមមើលត្រង់ទៅកាមេរ៉ា'),
+  blink('សូមព្រិចភ្នែក រួចបើកភ្នែកវិញ'),
+  lookUp('សូមងើបមុខចុះ'),
+  lookDown('សូមងើបមុខឡើង'),
+  turnRight('សូមបង្វែរមុខទៅស្តាំ'),
+  turnLeft('សូមបង្វែរមុខទៅឆ្វេង');
 
   const FaceEnrollmentStep(this.instruction);
 
@@ -75,10 +75,13 @@ class FaceEnrollmentController extends ChangeNotifier {
   FaceEnrollmentController({
     required this.controller,
     required this.overlayRect,
+    FaceEnrollmentStep initialStep = FaceEnrollmentStep.front,
     this.requiredStableFrames = 10,
     this.eulerToleranceDegrees = 12.0,
     this.minFaceSize = 0.14,
-  }) : _detector = FaceDetector(
+  }) : _step = initialStep,
+       _state = FaceValidationState(step: initialStep),
+       _detector = FaceDetector(
          options: FaceDetectorOptions(
            enableContours: false,
            enableLandmarks: true,
@@ -107,9 +110,9 @@ class FaceEnrollmentController extends ChangeNotifier {
   bool _eyesWereOpen = false;
   bool _eyesWereClosed = false;
   bool _blinkCompleted = false;
-  FaceEnrollmentStep _step = FaceEnrollmentStep.front;
+  FaceEnrollmentStep _step;
 
-  FaceValidationState _state = const FaceValidationState();
+  FaceValidationState _state;
   FaceValidationState get state => _state;
 
   final _milestoneController = StreamController<FaceEnrollmentStep>.broadcast();
@@ -472,12 +475,14 @@ class FaceEnrollmentWidget extends StatefulWidget {
   const FaceEnrollmentWidget({
     super.key,
     required this.controller,
+    this.initialStep = FaceEnrollmentStep.front,
     required this.onCaptured,
     required this.onCompleted,
     this.onError,
   });
 
   final CameraController controller;
+  final FaceEnrollmentStep initialStep;
   final Future<void> Function(XFile image, FaceEnrollmentStep step) onCaptured;
   final VoidCallback onCompleted;
   final void Function(Object error)? onError;
@@ -506,6 +511,7 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
     final enroller = FaceEnrollmentController(
       controller: widget.controller,
       overlayRect: overlayRect,
+      initialStep: widget.initialStep,
     );
     _enroller = enroller;
     _resultSub = enroller.milestones.listen(
@@ -563,52 +569,20 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
     super.dispose();
   }
 
-  String _feedbackFor(FaceValidationState state) {
+  // Only returns a message if something is wrong (no face, out of bounds, etc.)
+  String? _feedbackFor(FaceValidationState state) {
     if (state.errorMessage != null) return state.errorMessage!;
     if (!state.faceDetected) {
       return state.cameraFrameReceived
-          ? 'No face found yet. Face the camera, move closer, and use brighter light.'
-          : 'Starting camera face detection...';
+          ? 'រកមិនឃើញមុខទេ។ សូមចូលជិត និងស្ថិតនៅកន្លែងមានពន្លឺគ្រប់គ្រាន់។'
+          : 'កំពុងចាប់ផ្តើមកាមេរ៉ា...';
     }
-    if (!state.inBounds) return 'Center your face inside the oval.';
-    if (!state.faceLargeEnough) return 'Move closer to the camera.';
+    if (!state.inBounds) return 'សូមដាក់មុខនៅកណ្ដាលរង្វង់។';
+    if (!state.faceLargeEnough) return 'សូមចូលជិតកាមេរ៉ាបន្តិច។';
 
-    return switch (state.step) {
-      FaceEnrollmentStep.front =>
-        state.lookingStraight
-            ? 'Hold still and look into the camera.'
-            : 'Look directly into the camera and keep your head level.',
-      FaceEnrollmentStep.blink =>
-        !state.eyesClassified
-            ? 'Eyes not visible. Face the camera in brighter light.'
-            : !state.blinkCompleted
-            ? 'Blink both eyes, then open them.'
-            : 'Hold still with both eyes open.',
-      FaceEnrollmentStep.lookUp =>
-        !state.tiltDetected
-            ? 'Slowly look up.'
-            : state.tiltDirectionMatches
-            ? 'Hold still.'
-            : 'Look up, not down.',
-      FaceEnrollmentStep.lookDown =>
-        !state.tiltDetected
-            ? 'Slowly look down.'
-            : state.tiltDirectionMatches
-            ? 'Hold still.'
-            : 'Look down, not up.',
-      FaceEnrollmentStep.turnRight =>
-        !state.turnDetected
-            ? 'Slowly turn your head to the right.'
-            : !state.turnDirectionMatches
-            ? 'Turn your head to the right.'
-            : 'Hold still.',
-      FaceEnrollmentStep.turnLeft =>
-        !state.turnDetected
-            ? 'Slowly turn your head to the left.'
-            : !state.turnDirectionMatches
-            ? 'Turn your head to the left.'
-            : 'Hold still.',
-    };
+    // If the face is detected, in bounds, and large enough, return null
+    // so the UI knows to hide the status message.
+    return null;
   }
 
   @override
@@ -638,63 +612,113 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
                 : state.faceDetected && state.inBounds
                 ? Colors.amberAccent
                 : Colors.redAccent;
+            
+            // Get the status message (null if everything is perfect)
+            final feedback = _feedbackFor(state);
+
             return Stack(
               fit: StackFit.expand,
               children: [
                 CameraPreview(widget.controller),
+                
+                // Centered White Name at the top
                 Positioned(
-                  top: 24,
-                  left: 20,
-                  right: 20,
-                  child: Card(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Step ${state.step.number} of '
-                            '${FaceEnrollmentStep.total}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            state.step.instruction,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (state.step == FaceEnrollmentStep.blink) ...[
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Close both eyes, then open them',
-                              style: TextStyle(color: Colors.white70),
+                  top: 60,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Main Instruction Name
+                      Text(
+                        state.step.instruction,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 2),
+                              blurRadius: 4.0,
+                              color: Colors.black54,
                             ),
                           ],
-                          const SizedBox(height: 8),
-                          Text(
-                            _feedbackFor(state),
+                        ),
+                      ),
+                      // Message only shows if there is an issue
+                      if (feedback != null) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            feedback,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: state.errorMessage == null
-                                  ? Colors.white
-                                  : Colors.redAccent,
+                              color: state.errorMessage != null
+                                  ? Colors.redAccent
+                                  : Colors.white.withOpacity(0.9),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              shadows: const [
+                                Shadow(
+                                  offset: Offset(0, 1),
+                                  blurRadius: 3.0,
+                                  color: Colors.black54,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(value: state.progress),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Cleaner Bottom Progress Bar
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 40, bottom: 50, left: 32, right: 32),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.9),
+                          Colors.transparent,
                         ],
                       ),
                     ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: state.progress,
+                            minHeight: 6,
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            valueColor: AlwaysStoppedAnimation<Color>(ovalColor),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'សូមនៅស្ងៀម ដើម្បីថតរូប',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+
+                // The Oval Mask
                 IgnorePointer(
                   child: CustomPaint(
                     painter: _OvalMaskPainter(
@@ -726,27 +750,30 @@ class _OvalMaskPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final dim = Paint()..color = Colors.black.withValues(alpha: 0.55);
+    // Dim the background outside the oval
+    final dim = Paint()..color = Colors.black.withOpacity(0.6);
     final path = Path()
       ..addRect(Offset.zero & size)
       ..addOval(rect)
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(path, dim);
 
+    // Thinner, more elegant oval stroke
     final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
+      ..strokeWidth = 3
       ..color = color;
     canvas.drawOval(rect, stroke);
 
+    // Cleaner progress arc around the oval
     if (progress > 0 && progress < 1) {
       final arc = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 6
+        ..strokeWidth = 5
         ..color = color
         ..strokeCap = StrokeCap.round;
       canvas.drawArc(
-        rect.inflate(6),
+        rect.inflate(4),
         -math.pi / 2,
         2 * math.pi * progress,
         false,

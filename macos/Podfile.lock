@@ -1,15 +1,40 @@
 PODS:
+  - flutter_image_compress_macos (1.0.0):
+    - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - share_plus (0.0.1):
+    - FlutterMacOS
+  - sqflite_darwin (0.0.4):
+    - Flutter
+    - FlutterMacOS
+  - tflite_flutter (0.0.1):
+    - FlutterMacOS
 
 DEPENDENCIES:
+  - flutter_image_compress_macos (from `Flutter/ephemeral/.symlinks/plugins/flutter_image_compress_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - share_plus (from `Flutter/ephemeral/.symlinks/plugins/share_plus/macos`)
+  - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
+  - tflite_flutter (from `Flutter/ephemeral/.symlinks/plugins/tflite_flutter/macos`)
 
 EXTERNAL SOURCES:
+  flutter_image_compress_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_image_compress_macos/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  share_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/share_plus/macos
+  sqflite_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin
+  tflite_flutter:
+    :path: Flutter/ephemeral/.symlinks/plugins/tflite_flutter/macos
 
 SPEC CHECKSUMS:
+  flutter_image_compress_macos: 525b2993bb7d77af94af6ccf1f5848c6a111de02
   FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+  share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
+  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  tflite_flutter: d1496f2e968aa5a142fb282da8f5d754fcee5613
 
 PODFILE CHECKSUM: 4ce65d3f9299c6fc5335f549329192d492da6432
 

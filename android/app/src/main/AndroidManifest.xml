@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Required for face enrollment via the camera. -->
     <uses-permission android:name="android.permission.CAMERA" />
 
@@ -14,7 +16,7 @@
         android:required="false" />
 
     <application
-        android:label="face_detection"
+        android:label="SV Face ID"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

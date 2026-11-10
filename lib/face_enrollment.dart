@@ -13,8 +13,8 @@ import 'face_photo_normalizer.dart';
 enum FaceEnrollmentStep {
   front('សូមមើលត្រង់ទៅកាមេរ៉ា'),
   blink('សូមព្រិចភ្នែក រួចបើកភ្នែកវិញ'),
-  lookUp('សូមងើបមុខចុះ'),
-  lookDown('សូមងើបមុខឡើង'),
+  lookUp('សូមងើយក្បាលឡើងលើ'),
+  lookDown('សូមឱនក្បាលចុះក្រោម'),
   turnRight('សូមបង្វែរមុខទៅស្តាំ'),
   turnLeft('សូមបង្វែរមុខទៅឆ្វេង');
 
@@ -289,7 +289,7 @@ class FaceEnrollmentController extends ChangeNotifier {
         eulerX.abs() >= minTurnDegrees && eulerX.abs() <= maxTurnDegrees;
     final hasTurned =
         eulerY.abs() >= minTurnDegrees && eulerY.abs() <= maxTurnDegrees;
-    final lookingUp = eulerX < 0;
+    final lookingUp = eulerX > 0;
     final lookingRight = eulerY > 0;
     final tiltDirectionMatches = switch (_step) {
       FaceEnrollmentStep.lookUp => lookingUp,
@@ -305,8 +305,8 @@ class FaceEnrollmentController extends ChangeNotifier {
       FaceEnrollmentStep.front => lookingStraight,
       FaceEnrollmentStep.blink =>
         lookingStraight && eyesOpen && _blinkCompleted,
-      FaceEnrollmentStep.lookUp => hasTilt && eulerX < 0 && rollIsValid,
-      FaceEnrollmentStep.lookDown => hasTilt && eulerX > 0 && rollIsValid,
+      FaceEnrollmentStep.lookUp => hasTilt && eulerX > 0 && rollIsValid,
+      FaceEnrollmentStep.lookDown => hasTilt && eulerX < 0 && rollIsValid,
       FaceEnrollmentStep.turnRight => hasTurned && eulerY > 0 && rollIsValid,
       FaceEnrollmentStep.turnLeft => hasTurned && eulerY < 0 && rollIsValid,
     };
@@ -571,7 +571,9 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
 
   // Only returns a message if something is wrong (no face, out of bounds, etc.)
   String? _feedbackFor(FaceValidationState state) {
-    if (state.errorMessage != null) return state.errorMessage!;
+    if (state.errorMessage != null) {
+      return 'មានបញ្ហាក្នុងការពិនិត្យមុខ។ សូមកែទីតាំងមុខ ហើយសាកល្បងម្ដងទៀត។';
+    }
     if (!state.faceDetected) {
       return state.cameraFrameReceived
           ? 'រកមិនឃើញមុខទេ។ សូមចូលជិត និងស្ថិតនៅកន្លែងមានពន្លឺគ្រប់គ្រាន់។'
@@ -612,7 +614,7 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
                 : state.faceDetected && state.inBounds
                 ? Colors.amberAccent
                 : Colors.redAccent;
-            
+
             // Get the status message (null if everything is perfect)
             final feedback = _feedbackFor(state);
 
@@ -620,7 +622,7 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
               fit: StackFit.expand,
               children: [
                 CameraPreview(widget.controller),
-                
+
                 // Centered White Name at the top
                 Positioned(
                   top: 60,
@@ -682,7 +684,12 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
                   left: 0,
                   right: 0,
                   child: Container(
-                    padding: const EdgeInsets.only(top: 40, bottom: 50, left: 32, right: 32),
+                    padding: const EdgeInsets.only(
+                      top: 40,
+                      bottom: 50,
+                      left: 32,
+                      right: 32,
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
@@ -702,7 +709,9 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
                             value: state.progress,
                             minHeight: 6,
                             backgroundColor: Colors.white.withOpacity(0.2),
-                            valueColor: AlwaysStoppedAnimation<Color>(ovalColor),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              ovalColor,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),

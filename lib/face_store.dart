@@ -14,6 +14,8 @@ class RegisteredUser {
     this.faceImagePaths = const [],
     this.createdAt,
     this.createdBy,
+    this.employeeCode,
+    this.hrmFaceImagePaths = const {},
   });
 
   final String id;
@@ -21,12 +23,21 @@ class RegisteredUser {
   final List<String> faceImagePaths;
   final DateTime? createdAt;
   final String? createdBy;
+  final String? employeeCode;
+  final Map<String, String> hrmFaceImagePaths;
 
   bool get faceEnrolled => faceImagePaths.isNotEmpty;
+  bool get hasFacePhotos => faceEnrolled || hrmFaceImagePaths.isNotEmpty;
 
   factory RegisteredUser.fromMap(Map<String, Object?> row) {
     final storedPaths = row['face_image_paths'] as String?;
     final legacyPath = row['face_image_path'] as String?;
+    final storedHrmPaths = row['hrm_face_image_paths'] as String?;
+    final decodedHrmPaths = storedHrmPaths == null
+        ? const <String, String>{}
+        : (jsonDecode(storedHrmPaths) as Map<String, dynamic>).map(
+            (angle, path) => MapEntry(angle, path as String),
+          );
     return RegisteredUser(
       id: row['id']! as String,
       name: row['name']! as String,
@@ -37,6 +48,8 @@ class RegisteredUser {
           ? null
           : DateTime.parse(row['created_at']! as String).toUtc(),
       createdBy: row['created_by'] as String?,
+      employeeCode: row['employee_code'] as String?,
+      hrmFaceImagePaths: decodedHrmPaths,
     );
   }
 }
@@ -72,8 +85,14 @@ class StoredFaceSample {
 
 abstract interface class FaceStore {
   Future<List<RegisteredUser>> listUsers();
-  Future<RegisteredUser> createUser(String name);
+  Future<RegisteredUser> createUser(String name, {String? employeeCode});
+  Future<RegisteredUser> linkUserToEmployee(String userId, String employeeCode);
   Future<RegisteredUser> enrollUser(String userId, List<XFile> images);
+  Future<RegisteredUser> saveHrmFaceImages(
+    String userId,
+    Map<String, Uint8List> images, {
+    bool replaceExisting = false,
+  });
 }
 
 class LocalFaceStore implements FaceStore {
@@ -102,7 +121,7 @@ class LocalFaceStore implements FaceStore {
     final databasePath = await getDatabasesPath();
     final database = await openDatabase(
       '$databasePath/face_detection.db',
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users (
@@ -110,7 +129,9 @@ class LocalFaceStore implements FaceStore {
             name TEXT NOT NULL COLLATE NOCASE UNIQUE,
             face_image_paths TEXT,
             created_at TEXT NOT NULL,
-            created_by TEXT
+            created_by TEXT,
+            employee_code TEXT,
+            hrm_face_image_paths TEXT
           )
         ''');
         await db.execute('''
@@ -187,6 +208,14 @@ class LocalFaceStore implements FaceStore {
             }
           }
         }
+        if (oldVersion < 4) {
+          await db.execute('ALTER TABLE users ADD COLUMN employee_code TEXT');
+        }
+        if (oldVersion < 5) {
+          await db.execute(
+            'ALTER TABLE users ADD COLUMN hrm_face_image_paths TEXT',
+          );
+        }
       },
     );
     _database = database;
@@ -203,7 +232,7 @@ class LocalFaceStore implements FaceStore {
   }
 
   @override
-  Future<RegisteredUser> createUser(String name) async {
+  Future<RegisteredUser> createUser(String name, {String? employeeCode}) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
       throw ArgumentError.value(name, 'name', 'Name cannot be blank');
@@ -214,13 +243,115 @@ class LocalFaceStore implements FaceStore {
       id: _newId(),
       name: trimmedName,
       createdAt: createdAt,
+      employeeCode: employeeCode,
     );
     await (await _db).insert('users', {
       'id': user.id,
       'name': user.name,
       'created_at': createdAt.toIso8601String(),
+      'employee_code': employeeCode,
     });
     return user;
+  }
+
+  @override
+  Future<RegisteredUser> linkUserToEmployee(
+    String userId,
+    String employeeCode,
+  ) async {
+    final database = await _db;
+    final updatedCount = await database.update(
+      'users',
+      {'employee_code': employeeCode},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+    if (updatedCount != 1) throw StateError('User not found');
+    final rows = await database.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    return RegisteredUser.fromMap(rows.single);
+  }
+
+  @override
+  Future<RegisteredUser> saveHrmFaceImages(
+    String userId,
+    Map<String, Uint8List> images, {
+    bool replaceExisting = false,
+  }) async {
+    final database = await _db;
+    final rows = await database.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw StateError('User not found');
+    final user = RegisteredUser.fromMap(rows.first);
+    final directory = Directory(
+      '${(await getApplicationSupportDirectory()).path}/hrm_face_angles/$userId',
+    );
+    await directory.create(recursive: true);
+
+    final paths = replaceExisting
+        ? <String, String>{}
+        : Map<String, String>.of(user.hrmFaceImagePaths);
+    final newPaths = <String>[];
+    try {
+      for (final entry in images.entries) {
+        if (!const {
+          'straight',
+          'blink',
+          'left',
+          'right',
+          'up',
+          'down',
+        }.contains(entry.key)) {
+          throw ArgumentError.value(entry.key, 'angle', 'Unknown face angle.');
+        }
+        if (entry.value.isEmpty) {
+          throw ArgumentError.value(entry.key, 'image', 'Must not be empty.');
+        }
+        final path = '${directory.path}/${entry.key}-${_newId()}.jpg';
+        paths[entry.key] = path;
+        newPaths.add(path);
+        await File(path).writeAsBytes(entry.value, flush: true);
+      }
+
+      final updatedCount = await database.update(
+        'users',
+        {'hrm_face_image_paths': jsonEncode(paths)},
+        where: 'id = ?',
+        whereArgs: [userId],
+      );
+      if (updatedCount != 1) throw StateError('Could not save HRM face images');
+    } catch (_) {
+      for (final path in newPaths) {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      }
+      rethrow;
+    }
+
+    for (final previousPath in user.hrmFaceImagePaths.values) {
+      if (!paths.containsValue(previousPath)) {
+        final file = File(previousPath);
+        if (await file.exists()) await file.delete();
+      }
+    }
+
+    return RegisteredUser(
+      id: user.id,
+      name: user.name,
+      faceImagePaths: user.faceImagePaths,
+      createdAt: user.createdAt,
+      createdBy: user.createdBy,
+      employeeCode: user.employeeCode,
+      hrmFaceImagePaths: paths,
+    );
   }
 
   Future<List<StoredFaceSample>> getFaceSamples(String userId) async {
@@ -246,7 +377,15 @@ class LocalFaceStore implements FaceStore {
     final database = await _db;
     final rows = await database.query(
       'users',
-      columns: ['id', 'name', 'face_image_paths', 'created_at', 'created_by'],
+      columns: [
+        'id',
+        'name',
+        'face_image_paths',
+        'created_at',
+        'created_by',
+        'employee_code',
+        'hrm_face_image_paths',
+      ],
       where: 'id = ?',
       whereArgs: [userId],
       limit: 1,
@@ -316,6 +455,8 @@ class LocalFaceStore implements FaceStore {
       faceImagePaths: imagePaths,
       createdAt: user.createdAt,
       createdBy: user.createdBy,
+      employeeCode: user.employeeCode,
+      hrmFaceImagePaths: user.hrmFaceImagePaths,
     );
   }
 

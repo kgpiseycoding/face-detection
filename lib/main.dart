@@ -3,27 +3,36 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'api/hrm_face_api.dart';
+import 'config/app_config.dart';
+import 'constants/face_angles.dart';
 import 'face_enrollment.dart';
 import 'face_identity_service.dart';
 import 'face_store.dart';
-
+import 'models/employee.dart';
+import 'screens/employee_list_screen.dart';
+import 'screens/enrollment_screen.dart' as hrm;
 
 abstract final class AppTokens {
-  static const brand = Color(0xFF315CDB);
+  static const brand = Color(0xFF2C5BDE);
   static const brandLight = Color(0xFFE9EEFF);
-  static const brandDark = Color(0xFF233F9E);
-  static const surface = Color(0xFFF7F8FC);
+  static const brandDark = Color(0xFF1E3A8A);
+
+  static const surface = Color(0xFFF8F9FC);
   static const surfaceElevated = Colors.white;
-  static const outline = Color(0xFFE3E7F0);
-  static const success = Color(0xFF16865B);
-  static const warning = Color(0xFFAA6900);
-  static const danger = Color(0xFFB42318);
-  static const textPrimary = Color(0xFF171B2C);
-  static const textSecondary = Color(0xFF596176);
-  static const textTertiary = Color(0xFF7C8498);
+  static const outline = Color(0xFFE5E7EB);
+
+  static const success = Color(0xFF16A34A);
+  static const warning = Color(0xFFD97706);
+  static const danger = Color(0xFFDC2626);
+
+  static const textPrimary = Color(0xFF111827);
+  static const textSecondary = Color(0xFF4B5563);
+  static const textTertiary = Color(0xFF9CA3AF);
 
   static const xs = 4.0;
   static const sm = 8.0;
@@ -31,30 +40,11 @@ abstract final class AppTokens {
   static const lg = 16.0;
   static const xl = 24.0;
   static const xxl = 32.0;
-  static const xxxl = 48.0;
 
   static const rSm = 8.0;
   static const rMd = 12.0;
-  static const rLg = 16.0;
-  static const rXl = 24.0;
+  static const rLg = 20.0;
   static const rPill = 999.0;
-
-  static const shadowSm = [
-    BoxShadow(color: Color(0x0C18213D), blurRadius: 8, offset: Offset(0, 2)),
-  ];
-  static const shadowMd = [
-    BoxShadow(color: Color(0x1018213D), blurRadius: 18, offset: Offset(0, 6)),
-    BoxShadow(color: Color(0x0618213D), blurRadius: 3, offset: Offset(0, 1)),
-  ];
-  static const shadowLg = [
-    BoxShadow(color: Color(0x1418213D), blurRadius: 28, offset: Offset(0, 12)),
-    BoxShadow(color: Color(0x0818213D), blurRadius: 5, offset: Offset(0, 2)),
-  ];
-  static const brandGradient = LinearGradient(
-    colors: [Color(0xFF5478F4), brand, Color(0xFF2949B5)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 }
 
 abstract final class AppTheme {
@@ -66,73 +56,55 @@ abstract final class AppTheme {
         ).copyWith(
           primary: AppTokens.brand,
           onPrimary: Colors.white,
-          primaryContainer: AppTokens.brandLight,
-          onPrimaryContainer: AppTokens.brandDark,
-          secondary: AppTokens.brandDark,
           surface: AppTokens.surfaceElevated,
           error: AppTokens.danger,
         );
-    final baseText = ThemeData(
-      colorScheme: scheme,
-      useMaterial3: true,
-    ).textTheme;
 
-    return ThemeData(
-      colorScheme: scheme,
+    final base = ThemeData(colorScheme: scheme, useMaterial3: true);
+    final t = base.textTheme;
+
+    return base.copyWith(
       scaffoldBackgroundColor: AppTokens.surface,
-      useMaterial3: true,
-      textTheme: baseText.copyWith(
-        displayLarge: baseText.displayLarge?.copyWith(
+      textTheme: t.copyWith(
+        titleLarge: t.titleLarge?.copyWith(
           color: AppTokens.textPrimary,
           fontWeight: FontWeight.w700,
-          letterSpacing: -1.2,
+          fontSize: 18,
         ),
-        headlineLarge: baseText.headlineLarge?.copyWith(
-          color: AppTokens.textPrimary,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.6,
-        ),
-        headlineMedium: baseText.headlineMedium?.copyWith(
-          color: AppTokens.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-        headlineSmall: baseText.headlineSmall?.copyWith(
-          color: AppTokens.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-        titleLarge: baseText.titleLarge?.copyWith(
-          color: AppTokens.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-        titleMedium: baseText.titleMedium?.copyWith(
+        titleMedium: t.titleMedium?.copyWith(
           color: AppTokens.textPrimary,
           fontWeight: FontWeight.w600,
+          fontSize: 16,
         ),
-        bodyLarge: baseText.bodyLarge?.copyWith(
+        bodyLarge: t.bodyLarge?.copyWith(
           color: AppTokens.textSecondary,
-          height: 1.5,
-        ),
-        bodyMedium: baseText.bodyMedium?.copyWith(
-          color: AppTokens.textSecondary,
-          height: 1.45,
-        ),
-        bodySmall: baseText.bodySmall?.copyWith(
-          color: AppTokens.textTertiary,
+          fontSize: 15,
           height: 1.4,
         ),
-        labelLarge: baseText.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+        bodyMedium: t.bodyMedium?.copyWith(
+          color: AppTokens.textSecondary,
+          fontSize: 14,
+          height: 1.4,
+        ),
+        bodySmall: t.bodySmall?.copyWith(
+          color: AppTokens.textTertiary,
+          fontSize: 13,
+        ),
+        labelLarge: t.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppTokens.surface,
         foregroundColor: AppTokens.textPrimary,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         titleTextStyle: TextStyle(
           color: AppTokens.textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
         ),
       ),
       cardTheme: CardThemeData(
@@ -144,303 +116,29 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(AppTokens.rLg),
           side: const BorderSide(color: AppTokens.outline),
         ),
-        shadowColor: const Color(0x1018213D),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: AppTokens.brand,
+          foregroundColor: Colors.white,
           minimumSize: const Size(44, 48),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.xl,
-            vertical: AppTokens.md,
-          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTokens.rMd),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(44, 48),
-          foregroundColor: AppTokens.brand,
-          side: const BorderSide(color: AppTokens.outline),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTokens.rMd),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppTokens.surfaceElevated,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.lg,
-          vertical: AppTokens.lg,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTokens.rMd),
-          borderSide: const BorderSide(color: AppTokens.outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTokens.rMd),
-          borderSide: const BorderSide(color: AppTokens.outline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTokens.rMd),
-          borderSide: const BorderSide(color: AppTokens.brand, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTokens.rMd),
-          borderSide: const BorderSide(color: AppTokens.danger),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTokens.rMd),
-          borderSide: const BorderSide(color: AppTokens.danger, width: 2),
-        ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppTokens.brand,
+        foregroundColor: Colors.white,
+        elevation: 2,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF252A38),
-        contentTextStyle: const TextStyle(color: Colors.white),
+        backgroundColor: AppTokens.textPrimary,
+        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTokens.rMd),
-        ),
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: AppTokens.surfaceElevated,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTokens.rXl),
-        ),
-        titleTextStyle: const TextStyle(
-          color: AppTokens.textPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
-        contentTextStyle: const TextStyle(
-          color: AppTokens.textSecondary,
-          fontSize: 15,
-          height: 1.5,
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: AppTokens.outline,
-        thickness: 1,
-        space: 1,
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// REUSABLE COMPONENTS
-// ═══════════════════════════════════════════════════════════
-class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.size = 40});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: AppTokens.brandGradient,
-        borderRadius: BorderRadius.circular(size * 0.3),
-        boxShadow: AppTokens.shadowSm,
-      ),
-      child: Icon(
-        Icons.face_retouching_natural,
-        color: Colors.white,
-        size: size * 0.58,
-      ),
-    );
-  }
-}
-
-class StatusChip extends StatelessWidget {
-  const StatusChip({
-    super.key,
-    required this.label,
-    required this.icon,
-    this.color = AppTokens.textSecondary,
-    this.backgroundColor = AppTokens.surface,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final Color backgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTokens.md,
-        vertical: AppTokens.sm,
-      ),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppTokens.rPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: AppTokens.sm),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class Avatar extends StatelessWidget {
-  const Avatar({super.key, required this.name, this.imageFile, this.size = 52});
-
-  final String name;
-  final File? imageFile;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: AppTokens.brandGradient,
-        shape: BoxShape.circle,
-        boxShadow: AppTokens.shadowSm,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: imageFile == null
-          ? Center(
-              child: Text(
-                initial,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: size * 0.38,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            )
-          : Image.file(
-              imageFile!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Center(
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: size * 0.38,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
-}
-
-class InfoCard extends StatelessWidget {
-  const InfoCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.body,
-    this.tint = AppTokens.brandLight,
-    this.iconColor = AppTokens.brand,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-  final Color tint;
-  final Color iconColor;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppTokens.lg),
-      decoration: BoxDecoration(
-        color: tint,
-        borderRadius: BorderRadius.circular(AppTokens.rLg),
-        border: Border.all(color: iconColor.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(width: AppTokens.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTokens.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppTokens.xs),
-                Text(body, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: AppTokens.sm),
-            trailing!,
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class AppIconButton extends StatelessWidget {
-  const AppIconButton({
-    super.key,
-    required this.tooltip,
-    required this.onPressed,
-    required this.icon,
-    this.color,
-  });
-
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final Widget icon;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: IconTheme(
-              data: IconThemeData(color: color),
-              child: Center(child: icon),
-            ),
-          ),
         ),
       ),
     );
@@ -448,35 +146,20 @@ class AppIconButton extends StatelessWidget {
 }
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({
-    super.key,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-  });
-
+  const SectionHeader({super.key, required this.title, this.subtitle});
   final String title;
   final String? subtitle;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              if (subtitle case final subtitle?) ...[
-                const SizedBox(height: AppTokens.xs),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ],
-          ),
-        ),
-        ?trailing,
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        if (subtitle case final subtitle?) ...[
+          const SizedBox(height: 4),
+          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+        ],
       ],
     );
   }
@@ -488,20 +171,39 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key, FaceStore? store, FaceIdentityService? identityService})
-    : store = store ?? LocalFaceStore(),
-      identityService = identityService ?? LocalFaceIdentityService();
+  MyApp({
+    super.key,
+    FaceStore? store,
+    FaceIdentityService? identityService,
+    HrmFaceApi? api,
+  }) : store = store ?? LocalFaceStore(),
+       identityService = identityService ?? LocalFaceIdentityService(),
+       api =
+           api ??
+           HrmFaceApi(baseUrl: AppConfig.baseUrl, apiKey: AppConfig.apiKey);
 
   final FaceStore store;
   final FaceIdentityService identityService;
+  final HrmFaceApi api;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Face Detection',
+      title: 'SV Face ID',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: UserListScreen(store: store, identityService: identityService),
+      locale: const Locale('km'),
+      supportedLocales: const [Locale('km')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: UserListScreen(
+        store: store,
+        identityService: identityService,
+        api: api,
+      ),
     );
   }
 }
@@ -511,10 +213,11 @@ class UserListScreen extends StatefulWidget {
     super.key,
     required this.store,
     required this.identityService,
+    required this.api,
   });
-
   final FaceStore store;
   final FaceIdentityService identityService;
+  final HrmFaceApi api;
 
   @override
   State<UserListScreen> createState() => _UserListScreenState();
@@ -542,9 +245,9 @@ class _UserListScreenState extends State<UserListScreen> {
       String? recognitionError;
       try {
         await widget.identityService.prepare(users);
-      } catch (error) {
-        debugPrint('Face recognition initialization failed: $error');
-        recognitionError = error.toString();
+      } catch (e) {
+        debugPrint('Face recognition init failed: $e');
+        recognitionError = e.toString();
       }
       if (!mounted) return;
       setState(() {
@@ -552,45 +255,109 @@ class _UserListScreenState extends State<UserListScreen> {
         _recognitionError = recognitionError;
         _isLoading = false;
       });
-    } catch (error) {
+    } catch (e) {
+      debugPrint('Could not load users: $e');
       if (!mounted) return;
       setState(() {
-        _error = error.toString();
+        _error = 'សូមពិនិត្យទិន្នន័យក្នុងទូរស័ព្ទ ហើយសាកល្បងម្ដងទៀត។';
         _isLoading = false;
       });
     }
   }
 
   Future<void> _addUser() async {
-    final name = await Navigator.of(context)
-        .push<String>(MaterialPageRoute(builder: (_) => const AddUserScreen()));
-    if (!mounted || name == null) return;
+    print('Adding user...' + widget.api.baseUrl);
+    final registeredEmployeeCodes = _users
+        .map((user) => user.employeeCode?.trim().toUpperCase())
+        .whereType<String>()
+        .where((code) => code.isNotEmpty)
+        .toSet();
+    final employee = await Navigator.of(context).push<Employee>(
+      MaterialPageRoute(
+        builder: (_) => AddUserScreen(
+          api: widget.api,
+          registeredEmployeeCodes: registeredEmployeeCodes,
+        ),
+      ),
+    );
+    if (!mounted || employee == null) return;
 
     try {
-      final user = await widget.store.createUser(name);
+      final users = await widget.store.listUsers();
+      final employeeCode = employee.employeeCode.trim().toUpperCase();
+      RegisteredUser? existingUser;
+      for (final user in users) {
+        if (user.employeeCode?.trim().toUpperCase() == employeeCode) {
+          existingUser = user;
+          break;
+        }
+      }
+
+      if (existingUser != null) {
+        setState(() => _users = users);
+        await _openHrmEnrollment(employee, existingUser);
+        return;
+      }
+
+      final name = employee.displayName.isEmpty
+          ? employee.employeeCode
+          : employee.displayName;
+      final user = await widget.store.createUser(
+        name,
+        employeeCode: employee.employeeCode,
+      );
       if (!mounted) return;
       setState(() {
-        _users = [..._users, user]
-          ..sort(
-            (first, second) =>
-                first.name.toLowerCase().compareTo(second.name.toLowerCase()),
-          );
+        _users = [
+          ..._users,
+          user,
+        ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       });
-    } catch (error) {
+      await _openHrmEnrollment(employee, user);
+    } catch (e) {
+      debugPrint('Add user failed: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not add user: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('មិនអាចបន្ថែមបុគ្គលិកបានទេ។')),
+      );
     }
   }
 
+  Future<void> _openHrmEnrollment(
+    Employee employee,
+    RegisteredUser user,
+  ) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => hrm.EnrollmentScreen(
+          api: widget.api,
+          employee: employee,
+          store: widget.store,
+          userId: user.id,
+        ),
+      ),
+    );
+    await _refreshUsers();
+  }
+
   Future<void> _enrollUser(RegisteredUser user) async {
+    final code = user.employeeCode;
+    if (code != null && code.isNotEmpty) {
+      await _openHrmEnrollment(
+        Employee(
+          employeeCode: code,
+          firstName: user.name,
+          lastName: '',
+          departmentName: '',
+        ),
+        user,
+      );
+      return;
+    }
+
     if (_recognitionError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Face recognition is unavailable. See the status message for details.',
-          ),
-        ),
+        const SnackBar(content: Text('មិនអាចប្រើការស្គាល់មុខបានទេ។')),
       );
       return;
     }
@@ -607,153 +374,131 @@ class _UserListScreenState extends State<UserListScreen> {
   }
 
   Future<void> _viewUserPhotos(RegisteredUser user) async {
-    if (!user.faceEnrolled) return;
+    if (!user.hasFacePhotos) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => EnrolledFacePhotosScreen(user: user)),
     );
   }
 
-  Future<void> _showRecognitionErrorDetails() async {
-    final error = _recognitionError;
-    if (error == null) return;
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Face recognition details'),
-        content: SingleChildScrollView(child: SelectableText(error)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _refreshUsers() async {
+    final users = await widget.store.listUsers();
+    if (!mounted) return;
+    setState(() => _users = users);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // No AppBar to remove the huge empty gap at the top
-      floatingActionButton: _users.isEmpty && !_isLoading
+      floatingActionButton: _isLoading || _error != null
           ? null
           : FloatingActionButton(
               onPressed: _addUser,
-              tooltip: 'Add user',
-              backgroundColor: AppTokens.brand,
-              foregroundColor: Colors.white,
               shape: const CircleBorder(),
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.add, size: 28),
             ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-            ? _LoadError(message: _error!, onRetry: _loadUsers)
+            ? Center(
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: AppTokens.danger),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: _loadUsers,
-                child: _users.isEmpty
-                    ? CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: _EmptyUsersState(onAddUser: _addUser),
-                          ),
-                        ],
-                      )
-                    : CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppTokens.xl,
-                              AppTokens.xxl, // Breathing room from top edge
-                              AppTokens.xl,
-                              // Bottom space so FAB doesn't cover last card
-                              AppTokens.xxxl + AppTokens.xxl, 
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+                  children: [
+                    const SectionHeader(
+                      title: 'បុគ្គលិក',
+                      subtitle: 'មានប្រវត្តិរូបរក្សាទុកក្នុងទូរស័ព្ទនេះ',
+                    ),
+                    const SizedBox(height: 16),
+                    if (_users.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppTokens.surfaceElevated,
+                          borderRadius: BorderRadius.circular(AppTokens.rLg),
+                          border: Border.all(color: AppTokens.outline),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.people_outline,
+                              size: 48,
+                              color: AppTokens.brand,
                             ),
-                            sliver: SliverList(
-                              delegate: SliverChildListDelegate([
-                                SectionHeader(
-                                  title: 'People',
-                                  subtitle:
-                                      '${_users.length} ${_users.length == 1 ? 'profile' : 'profiles'} stored on this device',
-                                ),
-                                const SizedBox(height: AppTokens.lg),
-                                if (_recognitionError != null) ...[
-                                  InfoCard(
-                                    icon: Icons.warning_amber_rounded,
-                                    title: 'Face recognition couldn’t start.',
-                                    body:
-                                        'Rebuild and reinstall the app, then try again.',
-                                    tint: const Color(0xFFFFF3DF),
-                                    iconColor: AppTokens.warning,
-                                    trailing: AppIconButton(
-                                      tooltip: 'Try again',
-                                      onPressed: _loadUsers,
-                                      icon: const Icon(Icons.refresh),
-                                      color: AppTokens.warning,
-                                    ),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: AppTokens.xs,
-                                      ),
-                                      child: TextButton(
-                                        onPressed:
-                                            _showRecognitionErrorDetails,
-                                        child:
-                                            const Text('Technical details'),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppTokens.md),
-                                ],
-                                for (
-                                  var index = 0;
-                                  index < _users.length;
-                                  index++
-                                )
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      bottom: index == _users.length - 1
-                                          ? 0
-                                          : AppTokens.md,
-                                    ),
-                                    child: _UserCard(
-                                      user: _users[index],
-                                      onTap: _users[index].faceEnrolled
-                                          ? () =>
-                                              _viewUserPhotos(_users[index])
-                                          : null,
-                                      onViewPhotos: () =>
-                                          _viewUserPhotos(_users[index]),
-                                      onEnroll: () =>
-                                          _enrollUser(_users[index]),
-                                    ),
-                                  ),
-                              ]),
+                            const SizedBox(height: 12),
+                            Text(
+                              'មិនទាន់មានបុគ្គលិកទេ',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            const Text(
+                              'ស្វែងរក និងជ្រើសរើសបុគ្គលិកពី HRM ដើម្បីចាប់ផ្ដើមចុះឈ្មោះមុខ។',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppTokens.textSecondary),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: _addUser,
+                              icon: const Icon(Icons.person_add_alt_1),
+                              label: const Text('បន្ថែមបុគ្គលិក'),
+                            ),
+                          ],
+                        ),
                       ),
+                    if (_users.isEmpty) const SizedBox(height: 16),
+                    if (_recognitionError != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTokens.warning.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'មិនអាចចាប់ផ្ដើមការស្គាល់មុខបានទេ។',
+                          style: TextStyle(color: AppTokens.warning),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    for (var i = 0; i < _users.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          bottom: i == _users.length - 1 ? 0 : 12,
+                        ),
+                        child: _UserTile(
+                          user: _users[i],
+                          onTap: _users[i].employeeCode != null
+                              ? () => _enrollUser(_users[i])
+                              : _users[i].faceEnrolled
+                              ? () => _viewUserPhotos(_users[i])
+                              : null,
+                          onViewPhotos: () => _viewUserPhotos(_users[i]),
+                          onEnroll: () => _enrollUser(_users[i]),
+                        ),
+                      ),
+                  ],
+                ),
               ),
       ),
     );
   }
 }
 
-class _UserCard extends StatelessWidget {
-  const _UserCard({
+class _UserTile extends StatelessWidget {
+  const _UserTile({
     required this.user,
     required this.onTap,
     required this.onViewPhotos,
     required this.onEnroll,
   });
-
   final RegisteredUser user;
   final VoidCallback? onTap;
   final VoidCallback onViewPhotos;
@@ -762,21 +507,89 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enrolled = user.faceEnrolled;
+    final hrmImageCount = faceAngleKeys
+        .where((angle) => user.hrmFaceImagePaths[angle]?.isNotEmpty == true)
+        .length;
+    final hasHrm = hrmImageCount > 0;
+    final hrmComplete = hrmImageCount == faceAngleKeys.length;
+    final statusLabel = enrolled
+        ? 'បានរក្សាទុក'
+        : hasHrm
+        ? hrmComplete
+              ? 'រួចរាល់ (${faceAngleKeys.length}/${faceAngleKeys.length})'
+              : 'មិនទាន់គ្រប់ ($hrmImageCount/${faceAngleKeys.length})'
+        : 'មិនទាន់មាន';
+    final statusColor = enrolled
+        ? AppTokens.success
+        : hasHrm
+        ? hrmComplete
+              ? AppTokens.success
+              : AppTokens.brand
+        : AppTokens.textSecondary;
+    final statusBackground = enrolled || (hasHrm && hrmComplete)
+        ? const Color(0xFFE6F5EE)
+        : hasHrm
+        ? const Color(0xFFE9EEFF)
+        : const Color(0xFFF1F5F9);
+
+    final imageFile = user.faceImagePaths.isNotEmpty
+        ? File(user.faceImagePaths.first)
+        : hasHrm
+        ? File(
+            user.hrmFaceImagePaths[faceAngleKeys.first] ??
+                user.hrmFaceImagePaths.values.first,
+          )
+        : null;
+
+    final initial = user.name.trim().isEmpty
+        ? '?'
+        : user.name.trim()[0].toUpperCase();
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppTokens.md),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Avatar(
-                name: user.name,
-                imageFile: user.faceImagePaths.isEmpty
-                    ? null
-                    : File(user.faceImagePaths.first),
+              // Avatar
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  color: AppTokens.brand, // Solid Blue as requested
+                  shape: BoxShape.circle,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: imageFile == null
+                    ? Center(
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : Image.file(
+                        imageFile,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(
+                            initial,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
               ),
-              const SizedBox(width: AppTokens.md),
+              const SizedBox(width: 16),
+              // Name & Status
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -785,41 +598,68 @@ class _UserCard extends StatelessWidget {
                       user.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTokens.textPrimary,
+                      ),
                     ),
-                    const SizedBox(height: AppTokens.sm),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: StatusChip(
-                        label: enrolled ? 'Face enrolled' : 'Face not saved',
-                        icon: enrolled
-                            ? Icons.check_circle_outline
-                            : Icons.face_outlined,
-                        color: enrolled
-                            ? AppTokens.success
-                            : AppTokens.textSecondary,
-                        backgroundColor: enrolled
-                            ? const Color(0xFFE6F5EE)
-                            : AppTokens.surface,
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBackground,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            enrolled
+                                ? Icons.check
+                                : hasHrm
+                                ? hrmComplete
+                                      ? Icons.cloud_done_outlined
+                                      : Icons.cloud_sync_outlined
+                                : Icons.face_outlined,
+                            size: 14,
+                            color: statusColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: statusColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppTokens.sm),
-              if (enrolled)
-                AppIconButton(
-                  tooltip: 'View ${user.name} face photos',
+              // Actions
+              if (user.hasFacePhotos)
+                IconButton(
                   onPressed: onViewPhotos,
-                  icon: const Icon(Icons.photo_library_outlined, size: 20),
+                  icon: const Icon(
+                    Icons.photo_library_outlined,
+                    color: AppTokens.textSecondary,
+                    size: 22,
+                  ),
                 ),
-              AppIconButton(
-                tooltip: enrolled
-                    ? 'Re-enroll ${user.name}'
-                    : 'Enroll ${user.name}',
+              IconButton(
                 onPressed: onEnroll,
-                icon: const Icon(Icons.face_retouching_natural, size: 20),
-                color: AppTokens.brand,
+                icon: const Icon(
+                  Icons.face_retouching_natural,
+                  color: AppTokens.brand,
+                  size: 24,
+                ),
               ),
             ],
           ),
@@ -829,186 +669,21 @@ class _UserCard extends StatelessWidget {
   }
 }
 
-class _EmptyUsersState extends StatelessWidget {
-  const _EmptyUsersState({required this.onAddUser});
-
-  final VoidCallback onAddUser;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTokens.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 104,
-              height: 104,
-              decoration: const BoxDecoration(
-                color: AppTokens.brandLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.people_outline,
-                size: 48,
-                color: AppTokens.brand,
-              ),
-            ),
-            const SizedBox(height: AppTokens.xl),
-            Text(
-              'No users yet',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: AppTokens.sm),
-            Text(
-              'Add a person to create a profile and save their face on this phone.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: AppTokens.xl),
-            FilledButton.icon(
-              onPressed: onAddUser,
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Add user'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadError extends StatelessWidget {
-  const _LoadError({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
+class AddUserScreen extends StatelessWidget {
+  const AddUserScreen({
+    super.key,
+    required this.api,
+    this.registeredEmployeeCodes = const {},
+  });
+  final HrmFaceApi api;
+  final Set<String> registeredEmployeeCodes;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTokens.xl),
-        child: InfoCard(
-          icon: Icons.storage_outlined,
-          title: 'Could not load users saved on this phone.',
-          body: message,
-          tint: const Color(0xFFFFECEA),
-          iconColor: AppTokens.danger,
-          trailing: FilledButton(
-            onPressed: onRetry,
-            child: const Text('Retry'),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class AddUserScreen extends StatefulWidget {
-  const AddUserScreen({super.key});
-
-  @override
-  State<AddUserScreen> createState() => _AddUserScreenState();
-}
-
-class _AddUserScreenState extends State<AddUserScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _saveUser() {
-    if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).pop(_nameController.text.trim());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add user')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppTokens.xl,
-            AppTokens.xl,
-            AppTokens.xl,
-            AppTokens.xxl,
-          ),
-          children: [
-            Center(child: BrandMark(size: 76)),
-            const SizedBox(height: AppTokens.xl),
-            Text(
-              'Create a user',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: AppTokens.sm),
-            Text(
-              'Enter their name, then capture six face photos on this phone.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: AppTokens.xxl),
-            Text(
-              'PERSON DETAILS',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppTokens.textTertiary,
-                letterSpacing: 1.1,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: AppTokens.sm),
-            TextFormField(
-              key: const Key('user-name-field'),
-              controller: _nameController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Alex Morgan',
-                prefixIcon: Icon(Icons.person_outline),
-                helperText: 'Use the name you want to see in face matches.',
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Enter a name to create this profile.';
-                }
-                return null;
-              },
-              onFieldSubmitted: (_) => _saveUser(),
-            ),
-            const SizedBox(height: AppTokens.lg),
-            const InfoCard(
-              icon: Icons.photo_camera_outlined,
-              title: '6 face photos required',
-              body:
-                  'Looking forward, blinking, and turning to both sides. Photos stay on this phone.',
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppTokens.xl,
-            AppTokens.md,
-            AppTokens.xl,
-            AppTokens.lg,
-          ),
-          child: FilledButton.icon(
-            onPressed: _saveUser,
-            icon: const Icon(Icons.person_add_alt_1),
-            label: const Text('Save user'),
-          ),
-        ),
-      ),
+    return EmployeeListScreen(
+      api: api,
+      selectionOnly: true,
+      registeredEmployeeCodes: registeredEmployeeCodes,
     );
   }
 }
@@ -1020,7 +695,6 @@ class EnrollmentScreen extends StatefulWidget {
     required this.identityService,
     required this.user,
   });
-
   final FaceStore store;
   final FaceIdentityService identityService;
   final RegisteredUser user;
@@ -1029,9 +703,70 @@ class EnrollmentScreen extends StatefulWidget {
   State<EnrollmentScreen> createState() => _EnrollmentScreenState();
 }
 
+class _EnrollmentScreenState extends State<EnrollmentScreen> {
+  final Map<FaceEnrollmentStep, XFile> _samples = {};
+  late final String _sessionId = widget.identityService
+      .createEnrollmentSession();
+
+  Future<void> _saveSample(XFile image, FaceEnrollmentStep step) async {
+    await widget.identityService.addEnrollmentSample(
+      sessionId: _sessionId,
+      user: widget.user,
+      imagePath: image.path,
+      sampleIndex: step.index,
+    );
+    final previous = _samples[step];
+    _samples[step] = image;
+    if (previous != null && previous.path != image.path) {
+      await _deleteTemp(previous.path);
+    }
+    if (step != FaceEnrollmentStep.turnLeft) return;
+    final ordered = [for (final s in FaceEnrollmentStep.values) _samples[s]!];
+    final enrolledUser = await widget.store.enrollUser(widget.user.id, ordered);
+    await widget.identityService.completeEnrollment(
+      sessionId: _sessionId,
+      user: enrolledUser,
+    );
+    for (final s in ordered) {
+      await _deleteTemp(s.path);
+    }
+  }
+
+  Future<void> _deleteTemp(String path) async {
+    final f = File(path);
+    if (await f.exists()) await f.delete();
+  }
+
+  @override
+  void dispose() {
+    unawaited(
+      widget.identityService.cancelEnrollment(_sessionId).catchError((e) {
+        debugPrint('Could not clear enrollment: $e');
+      }),
+    );
+    for (final s in _samples.values) {
+      unawaited(
+        _deleteTemp(s.path).catchError((e) {
+          debugPrint('Could not remove temp photo: $e');
+        }),
+      );
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _FaceScanScreen(
+      title: 'ចុះឈ្មោះមុខ',
+      onCaptured: _saveSample,
+      completedButtonLabel: 'បញ្ចប់',
+      onCompleted: () => Navigator.of(context).pop(true),
+    );
+  }
+}
+
 class EnrolledFacePhotosScreen extends StatefulWidget {
   const EnrolledFacePhotosScreen({super.key, required this.user});
-
   final RegisteredUser user;
 
   @override
@@ -1040,88 +775,60 @@ class EnrolledFacePhotosScreen extends StatefulWidget {
 }
 
 class _EnrolledFacePhotosScreenState extends State<EnrolledFacePhotosScreen> {
-  static const _legacySampleLabels = [
-    'Facing camera',
-    'Blink sample',
-    'Turned to one side',
-    'Turned to the other side',
+  static const _legacyLabels = [
+    'មើលត្រង់ទៅកាមេរ៉ា',
+    'ព្រិចភ្នែក',
+    'បែរក្បាលទៅខាងឆ្វេង',
+    'បែរក្បាលទៅខាងស្តាំ',
   ];
-  static const _sampleLabels = [
-    'Facing camera',
-    'Blink sample',
-    'Looking up',
-    'Looking down',
-    'Turned right',
-    'Turned left',
+  static const _labels = [
+    'មើលត្រង់ទៅកាមេរ៉ា',
+    'ព្រិចភ្នែកទាំងពីរមួយភ្លែត',
+    'បែរក្បាលទៅខាងឆ្វេង',
+    'បែរក្បាលទៅខាងស្តាំ',
+    'ងើយចង្កាឡើងលើ',
+    'បន្ទាបចង្កាចុះក្រោម',
   ];
   bool _isSharing = false;
 
-  String _sampleLabel(int index) {
-    final labels = widget.user.faceImagePaths.length == 4
-        ? _legacySampleLabels
-        : _sampleLabels;
-    return index < labels.length ? labels[index] : 'Face sample ${index + 1}';
+  String _label(int i) {
+    final list = widget.user.faceImagePaths.length == 4
+        ? _legacyLabels
+        : _labels;
+    return i < list.length ? list[i] : 'រូបថត ${i + 1}';
   }
 
-  String _safeFilePart(String value) => value
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-      .replaceAll(RegExp(r'^-+|-+$'), '');
-
-  Future<void> _sharePhotos() async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _share() async {
+    final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Share face photos?'),
-        content: Text(
-          'This will send ${widget.user.faceImagePaths.length} face photos '
-          'outside this app to the app you choose. Face photos are sensitive.',
-        ),
+        title: const Text('ចែករំលែករូបថតមុខ?'),
+        content: const Text('រូបថតមុខនឹងត្រូវផ្ញើចេញ។ រូបថតមុខជាព័ត៌មានឯកជន។'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('បោះបង់'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Continue'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('បន្ត'),
           ),
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (ok != true || !mounted) return;
 
     setState(() => _isSharing = true);
     try {
       final paths = widget.user.faceImagePaths;
-      final missingPaths = <String>[];
-      for (final path in paths) {
-        if (!await File(path).exists()) missingPaths.add(path);
-      }
-      if (missingPaths.isNotEmpty) {
-        throw FileSystemException(
-          'Some saved face photos are missing',
-          missingPaths.first,
-        );
-      }
-
-      final fileNames = [
-        for (var index = 0; index < paths.length; index++)
-          '${_safeFilePart(widget.user.name)}-'
-              '${_safeFilePart(_sampleLabel(index))}.jpg',
-      ];
       await SharePlus.instance.share(
         ShareParams(
-          files: [for (final path in paths) XFile(path)],
-          fileNameOverrides: fileNames,
-          title: '${widget.user.name} face photos',
+          files: [for (final p in paths) XFile(p)],
+          title: 'រូបថតមុខ ${widget.user.name}',
         ),
       );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not share face photos: $error')),
-      );
+    } catch (e) {
+      debugPrint('Share failed: $e');
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
@@ -1129,164 +836,203 @@ class _EnrolledFacePhotosScreenState extends State<EnrolledFacePhotosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Collect only HRM images if they exist, otherwise local images
+    final hrmPhotos = [
+      for (final a in faceAngleKeys)
+        if (widget.user.hrmFaceImagePaths[a] case final p?) (a, p),
+    ];
+
+    final localPhotos = [
+      for (var i = 0; i < widget.user.faceImagePaths.length; i++)
+        (_label(i), widget.user.faceImagePaths[i]),
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.user.name} face photos'),
+        title: Text('រូបថតមុខរបស់ ${widget.user.name}'),
+        centerTitle: true,
         actions: [
-          AppIconButton(
-            tooltip: 'Share face photos',
-            onPressed: _isSharing ? null : _sharePhotos,
-            icon: _isSharing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.share_outlined),
-          ),
-          const SizedBox(width: AppTokens.sm),
+          if (widget.user.faceImagePaths.isNotEmpty)
+            IconButton(
+              onPressed: _isSharing ? null : _share,
+              icon: _isSharing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.share_outlined),
+            ),
         ],
       ),
-      body: widget.user.faceImagePaths.isEmpty
-          ? const Center(
-              child: InfoCard(
-                icon: Icons.photo_outlined,
-                title: 'No face photos saved for this user.',
-                body: 'Enroll this person to save their six camera samples.',
-              ),
-            )
-          : CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppTokens.xl,
-                    AppTokens.lg,
-                    AppTokens.xl,
-                    AppTokens.xl,
-                  ),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      SectionHeader(
-                        title: 'Enrollment photos',
-                        subtitle:
-                            '${widget.user.faceImagePaths.length} local samples',
-                      ),
-                      const SizedBox(height: AppTokens.lg),
-                    ]),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppTokens.xl,
-                    0,
-                    AppTokens.xl,
-                    AppTokens.xxl,
-                  ),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: AppTokens.md,
-                          mainAxisSpacing: AppTokens.md,
-                          childAspectRatio: 1.1,
+      body: !widget.user.hasFacePhotos
+          ? const Center(child: Text('មិនមានរូបថតមុខសម្រាប់បុគ្គលិកនេះទេ។'))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (hrmPhotos.isNotEmpty) ...[
+                  _PhotoGrid(
+                    photos: [
+                      for (var i = 0; i < hrmPhotos.length; i++)
+                        (
+                          faceAngleLabelsKm[hrmPhotos[i].$1] ?? hrmPhotos[i].$1,
+                          hrmPhotos[i].$2,
+                          i + 1,
                         ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final label = _sampleLabel(index);
-                      final image = File(widget.user.faceImagePaths[index]);
-                      final heroTag = '${widget.user.id}-face-photo-$index';
-                      return Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).push<void>(
-                            MaterialPageRoute(
-                              builder: (_) => _FacePhotoDetailScreen(
-                                image: image,
-                                label: label,
-                                heroTag: heroTag,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Hero(
-                                      tag: heroTag,
-                                      child: Image.file(
-                                        image,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (
-                                              context,
-                                              error,
-                                              stackTrace,
-                                            ) => const ColoredBox(
-                                              color: AppTokens.brandLight,
-                                              child: Center(
-                                                child: Icon(
-                                                  Icons.broken_image_outlined,
-                                                  size: 40,
-                                                  color: AppTokens.brand,
-                                                ),
-                                              ),
-                                            ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: AppTokens.sm,
-                                      left: AppTokens.sm,
-                                      child: Container(
-                                        width: 30,
-                                        height: 30,
-                                        alignment: Alignment.center,
-                                        decoration: const BoxDecoration(
-                                          color: AppTokens.brand,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          '${index + 1}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(AppTokens.md),
-                                child: Text(
-                                  label,
-                                  maxLines: 2,
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.labelLarge,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }, childCount: widget.user.faceImagePaths.length),
+                    ],
+                    source: 'hrm',
+                    userId: widget.user.id,
                   ),
-                ),
+                  const SizedBox(height: 24),
+                ],
+                if (localPhotos.isNotEmpty) ...[
+                  if (hrmPhotos.isEmpty)
+                    SectionHeader(
+                      title: 'រូបថតចុះឈ្មោះមុខ',
+                      subtitle: 'រូបភាព ${localPhotos.length} សន្លឹក',
+                    ),
+                  if (hrmPhotos.isEmpty) const SizedBox(height: 16),
+                  _PhotoGrid(
+                    photos: [
+                      for (var i = 0; i < localPhotos.length; i++)
+                        (localPhotos[i].$1, localPhotos[i].$2, i + 1),
+                    ],
+                    source: 'local',
+                    userId: widget.user.id,
+                  ),
+                ],
               ],
             ),
     );
   }
 }
 
-class _FacePhotoDetailScreen extends StatelessWidget {
-  const _FacePhotoDetailScreen({
+class _PhotoGrid extends StatelessWidget {
+  const _PhotoGrid({
+    required this.photos,
+    required this.source,
+    required this.userId,
+  });
+  // (Label, FilePath, Index)
+  final List<(String, String, int)> photos;
+  final String source;
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.9, // Matches the screenshot exactly
+      ),
+      itemCount: photos.length,
+      itemBuilder: (context, index) {
+        final (label, path, number) = photos[index];
+        final image = File(path);
+        final heroTag = '$userId-$source-$index';
+
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              16,
+            ), // Rounded corners like the screenshot
+            side: const BorderSide(color: AppTokens.outline),
+          ),
+          child: InkWell(
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) =>
+                    _PhotoDetail(image: image, label: label, heroTag: heroTag),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Hero(
+                        tag: heroTag,
+                        child: Image.file(
+                          image,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: AppTokens.brandLight,
+                            child: Center(
+                              child: Icon(
+                                Icons.broken_image_outlined,
+                                color: AppTokens.brand,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // The Blue Number Badge
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: AppTokens.brand,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$number',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Bottom Text Section
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 8,
+                  ),
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppTokens.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PhotoDetail extends StatelessWidget {
+  const _PhotoDetail({
     required this.image,
     required this.label,
     required this.heroTag,
   });
-
   final File image;
   final String label;
   final String heroTag;
@@ -1296,7 +1042,6 @@ class _FacePhotoDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Photo detail'),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -1313,13 +1058,9 @@ class _FacePhotoDetailScreen extends StatelessWidget {
                 tag: heroTag,
                 child: Image.file(
                   image,
-                  errorBuilder: (context, error, stackTrace) => const Padding(
-                    padding: EdgeInsets.all(AppTokens.xl),
-                    child: Text(
-                      'This photo is unavailable on this phone.',
-                      style: TextStyle(color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
+                  errorBuilder: (_, __, ___) => const Text(
+                    'រូបថតមិនមាន',
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
               ),
@@ -1329,12 +1070,7 @@ class _FacePhotoDetailScreen extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(
-                AppTokens.xl,
-                AppTokens.xxl,
-                AppTokens.xl,
-                AppTokens.xxl,
-              ),
+              padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -1345,8 +1081,11 @@ class _FacePhotoDetailScreen extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(color: Colors.white),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -1356,74 +1095,9 @@ class _FacePhotoDetailScreen extends StatelessWidget {
   }
 }
 
-class _EnrollmentScreenState extends State<EnrollmentScreen> {
-  final Map<FaceEnrollmentStep, XFile> _samples = {};
-  late final String _sessionId = widget.identityService
-      .createEnrollmentSession();
-
-  Future<void> _saveSample(XFile image, FaceEnrollmentStep step) async {
-    await widget.identityService.addEnrollmentSample(
-      sessionId: _sessionId,
-      user: widget.user,
-      imagePath: image.path,
-      sampleIndex: step.index,
-    );
-    final previousSample = _samples[step];
-    _samples[step] = image;
-    if (previousSample != null && previousSample.path != image.path) {
-      await _deleteTemporaryPhoto(previousSample.path);
-    }
-    if (step != FaceEnrollmentStep.turnLeft) return;
-    final orderedSamples = [
-      for (final enrollmentStep in FaceEnrollmentStep.values)
-        _samples[enrollmentStep]!,
-    ];
-    final enrolledUser = await widget.store.enrollUser(
-      widget.user.id,
-      orderedSamples,
-    );
-    await widget.identityService.completeEnrollment(
-      sessionId: _sessionId,
-      user: enrolledUser,
-    );
-    for (final sample in orderedSamples) {
-      await _deleteTemporaryPhoto(sample.path);
-    }
-  }
-
-  Future<void> _deleteTemporaryPhoto(String path) async {
-    final file = File(path);
-    if (await file.exists()) await file.delete();
-  }
-
-  @override
-  void dispose() {
-    unawaited(
-      widget.identityService.cancelEnrollment(_sessionId).catchError((error) {
-        debugPrint('Could not clear temporary face enrollment: $error');
-      }),
-    );
-    for (final sample in _samples.values) {
-      unawaited(
-        _deleteTemporaryPhoto(sample.path).catchError((error) {
-          debugPrint('Could not remove temporary face photo: $error');
-        }),
-      );
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _FaceScanScreen(
-      title: '',
-      onCaptured: _saveSample,
-      completedButtonLabel: 'បញ្ចប់',
-      onCompleted: () => Navigator.of(context).pop(true),
-    );
-  }
-}
-
+// ═══════════════════════════════════════════════════════════
+// FACE SCAN (camera)
+// ═══════════════════════════════════════════════════════════
 typedef _CaptureHandler = Future<void> Function(
   XFile image,
   FaceEnrollmentStep step,
@@ -1436,7 +1110,6 @@ class _FaceScanScreen extends StatefulWidget {
     required this.completedButtonLabel,
     this.onCompleted,
   });
-
   final String title;
   final _CaptureHandler onCaptured;
   final String completedButtonLabel;
@@ -1451,13 +1124,13 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
   List<CameraDescription> _cameras = const [];
   CameraLensDirection? _lensDirection;
   String _status = 'កំពុងចាប់ផ្តើមកាមេរ៉ា...';
-  bool _permissionPermanentlyDenied = false;
-  bool _cameraPermissionBlocked = false;
-  bool _isSwitchingCamera = false;
-  bool _captureComplete = false;
-  bool _captureFailed = false;
-  int _currentStep = 1;
-  int _scannerGeneration = 0;
+  bool _permDenied = false;
+  bool _permBlocked = false;
+  bool _switching = false;
+  bool _complete = false;
+  bool _failed = false;
+  int _step = 1;
+  int _gen = 0;
 
   @override
   void initState() {
@@ -1468,64 +1141,54 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
   Future<void> _setup() async {
     final status = await Permission.camera.status;
     if (status.isGranted) {
-      await _initializeCamera();
+      await _initCamera();
       return;
     }
-
     if (status.isDenied || status.isRestricted || status.isLimited) {
       final requested = await Permission.camera.request();
       if (requested.isGranted) {
-        await _initializeCamera();
+        await _initCamera();
         return;
       }
       if (!mounted) return;
       if (requested.isPermanentlyDenied) {
-        setState(() {
-          _permissionPermanentlyDenied = true;
-          _cameraPermissionBlocked = true;
-          _status = 'ការអនុញ្ញាតប្រើកាមេរ៉ាត្រូវបានបិទជាអចិន្ត្រៃយ៍។ '
-              'សូមបើកវានៅក្នុងការកំណត់។';
-        });
+        _setDenied();
         return;
       }
     }
-
     if (!mounted) return;
     if (status.isPermanentlyDenied) {
-      setState(() {
-        _permissionPermanentlyDenied = true;
-        _cameraPermissionBlocked = true;
-        _status = 'ការអនុញ្ញាតប្រើកាមេរ៉ាត្រូវបានបិទជាអចិន្ត្រៃយ៍។ '
-            'សូមបើកវានៅក្នុងការកំណត់។';
-      });
+      _setDenied();
       return;
     }
-
     setState(() {
-      _permissionPermanentlyDenied = false;
-      _cameraPermissionBlocked = true;
-      _status = 'មិនបានអនុញ្ញាតឱ្យប្រើកាមេរ៉ាទេ។';
+      _permDenied = false;
+      _permBlocked = true;
+      _status = 'មិនបានអនុញ្ញាតឱ្យប្រើកាមេរ៉ា។';
     });
   }
 
-  Future<void> _initializeCamera({CameraLensDirection? lensDirection}) async {
+  void _setDenied() => setState(() {
+    _permDenied = true;
+    _permBlocked = true;
+    _status = 'ការអនុញ្ញាតត្រូវបានបិទ។ សូមបើកក្នុងការកំណត់។';
+  });
+
+  Future<void> _initCamera({CameraLensDirection? lens}) async {
     CameraController? controller;
     try {
       final cameras = await availableCameras();
       _cameras = cameras;
       if (cameras.isEmpty) {
-        if (mounted) setState(() => _status = 'មិនមានកាមេរ៉ាទេ។');
+        if (mounted) setState(() => _status = 'មិនមានកាមេរ៉ា។');
         return;
       }
-
-      final selectedCamera = cameras.firstWhere(
-        (camera) =>
-            camera.lensDirection ==
-            (lensDirection ?? CameraLensDirection.front),
+      final selected = cameras.firstWhere(
+        (c) => c.lensDirection == (lens ?? CameraLensDirection.front),
         orElse: () => cameras.first,
       );
       controller = CameraController(
-        selectedCamera,
+        selected,
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: Platform.isIOS
@@ -1533,55 +1196,50 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
             : ImageFormatGroup.yuv420,
       );
       await controller.initialize();
-
       if (!mounted) {
         await controller.dispose();
         return;
       }
       setState(() {
         _controller = controller;
-        _lensDirection = selectedCamera.lensDirection;
-        _cameraPermissionBlocked = false;
+        _lensDirection = selected.lensDirection;
+        _permBlocked = false;
+        _permDenied = false;
         _status = 'សូមដាក់មុខនៅកណ្ដាលរង្វង់។';
-        _permissionPermanentlyDenied = false;
       });
-    } catch (error) {
+    } catch (e) {
       await controller?.dispose();
       if (!mounted) return;
-      setState(() => _status = 'មិនអាចចាប់ផ្តើមកាមេរ៉ាបានទេ៖ $error');
+      debugPrint('Camera init failed: $e');
+      setState(() => _status = 'មិនអាចចាប់ផ្ដើមកាមេរ៉ា។');
     }
   }
 
   Future<void> _switchCamera() async {
-    if (_isSwitchingCamera) return;
-    final nextDirection = _lensDirection == CameraLensDirection.front
+    if (_switching) return;
+    final next = _lensDirection == CameraLensDirection.front
         ? CameraLensDirection.back
         : CameraLensDirection.front;
-    final matchingCameras = _cameras.where(
-      (camera) => camera.lensDirection == nextDirection,
-    );
-    if (matchingCameras.isEmpty) return;
-    final nextCamera = matchingCameras.first;
-
-    final previousController = _controller;
+    final matches = _cameras.where((c) => c.lensDirection == next);
+    if (matches.isEmpty) return;
+    final previous = _controller;
     setState(() {
-      _isSwitchingCamera = true;
+      _switching = true;
       _controller = null;
       _status = 'កំពុងប្តូរកាមេរ៉ា...';
-      _scannerGeneration++;
+      _gen++;
     });
     try {
-      if (previousController?.value.isStreamingImages ?? false) {
-        await previousController!.stopImageStream();
+      if (previous?.value.isStreamingImages ?? false) {
+        await previous!.stopImageStream();
       }
-      await previousController?.dispose();
-      await _initializeCamera(lensDirection: nextCamera.lensDirection);
-    } catch (error) {
-      if (mounted) {
-        setState(() => _status = 'មិនអាចប្តូរកាមេរ៉ាបានទេ៖ $error');
-      }
+      await previous?.dispose();
+      await _initCamera(lens: matches.first.lensDirection);
+    } catch (e) {
+      debugPrint('Switch failed: $e');
+      if (mounted) setState(() => _status = 'មិនអាចប្ដូរកាមេរ៉ា។');
     } finally {
-      if (mounted) setState(() => _isSwitchingCamera = false);
+      if (mounted) setState(() => _switching = false);
     }
   }
 
@@ -1589,17 +1247,15 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     final result = await Permission.camera.request();
     if (!mounted) return;
     if (result.isGranted) {
-      await _initializeCamera();
+      await _initCamera();
       return;
     }
-
     setState(() {
-      _permissionPermanentlyDenied = result.isPermanentlyDenied;
-      _cameraPermissionBlocked = !result.isGranted;
+      _permDenied = result.isPermanentlyDenied;
+      _permBlocked = !result.isGranted;
       _status = result.isPermanentlyDenied
-          ? 'ការអនុញ្ញាតប្រើកាមេរ៉ាត្រូវបានបិទជាអចិន្ត្រៃយ៍។ '
-                'សូមបើកវានៅក្នុងការកំណត់។'
-          : 'មិនបានអនុញ្ញាតឱ្យប្រើកាមេរ៉ាទេ។';
+          ? 'ការអនុញ្ញាតត្រូវបានបិទ។ សូមបើកក្នុងការកំណត់។'
+          : 'មិនបានអនុញ្ញាតឱ្យប្រើកាមេរ៉ា។';
     });
   }
 
@@ -1607,45 +1263,39 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     if (!mounted) return;
     setState(() {
       _status = step.next == null
-          ? 'កំពុងរក្សាទុកការចុះឈ្មោះមុខក្នុងទូរស័ព្ទនេះ...'
+          ? 'កំពុងរក្សាទុក...'
           : 'កំពុងរក្សាទុកជំហាន ${step.number}...';
-      _captureFailed = false;
+      _failed = false;
     });
     try {
       await widget.onCaptured(image, step);
       if (!mounted) return;
       setState(() {
         if (step.next == null) {
-          _status = 'ការចុះឈ្មោះមុខត្រូវបានរក្សាទុកក្នុងទូរស័ព្ទនេះ។';
-          _captureComplete = true;
+          _status = 'រក្សាទុករួចរាល់។';
+          _complete = true;
         } else {
-          _status = 'បានរក្សាទុកជំហាន ${step.number}។ '
-              'បន្ទាប់៖ ${step.next!.instruction}';
-          _currentStep = step.next!.number;
+          _status = 'បន្ទាប់៖ ${step.next!.instruction}';
+          _step = step.next!.number;
         }
       });
-    } catch (error) {
+    } catch (e) {
+      debugPrint('Capture failed: $e');
       if (!mounted) return;
       setState(() {
-        _status = '$error';
-        _captureFailed = true;
+        _status = 'មិនអាចរក្សាទុកបានទេ។';
+        _failed = true;
       });
       rethrow;
     }
   }
 
-  void _retryCapture() {
-    setState(() {
-      _status = 'សូមដាក់មុខនៅកណ្ដាលរង្វង់។';
-      _captureFailed = false;
-      _currentStep = 1;
-      _scannerGeneration++;
-    });
-  }
-
-  Future<void> _openSettings() async {
-    await openAppSettings();
-  }
+  void _retry() => setState(() {
+    _status = 'សូមដាក់មុខនៅកណ្ដាលរង្វង់។';
+    _failed = false;
+    _step = 1;
+    _gen++;
+  });
 
   @override
   void dispose() {
@@ -1653,12 +1303,14 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
     super.dispose();
   }
 
+  bool get _hasBothCameras =>
+      _cameras.any((c) => c.lensDirection == CameraLensDirection.front) &&
+      _cameras.any((c) => c.lensDirection == CameraLensDirection.back);
+
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    final permissionBlocked =
-        controller == null &&
-        (_cameraPermissionBlocked || _permissionPermanentlyDenied);
+    final blocked = controller == null && (_permBlocked || _permDenied);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -1668,40 +1320,35 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.white, size: 22),
         actions: [
-          if (_cameras.any(
-                (camera) => camera.lensDirection == CameraLensDirection.front,
-              ) &&
-              _cameras.any(
-                (camera) => camera.lensDirection == CameraLensDirection.back,
-              ))
-            AppIconButton(
-              tooltip: _lensDirection == CameraLensDirection.front
-                  ? 'ប្តូរទៅកាមេរ៉ាខាងក្រោយ'
-                  : 'ប្តូរទៅកាមេរ៉ាខាងមុខ',
-              onPressed: _isSwitchingCamera ? null : _switchCamera,
-              icon: const Icon(Icons.autorenew_rounded),
+          if (_hasBothCameras)
+            IconButton(
+              onPressed: _switching ? null : _switchCamera,
+              icon: const Icon(Icons.flip_camera_ios_outlined),
               color: Colors.white,
             ),
-          const SizedBox(width: AppTokens.sm),
         ],
       ),
       body: controller == null
           ? Center(
-              child: permissionBlocked
-                  ? _CameraPermissionState(
-                      permanentlyDenied: _permissionPermanentlyDenied,
+              child: blocked
+                  ? _PermissionState(
+                      permanentlyDenied: _permDenied,
                       onAllow: _requestPermission,
-                      onOpenSettings: _openSettings,
+                      onOpenSettings: openAppSettings,
                     )
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const CircularProgressIndicator(color: Colors.white),
-                        const SizedBox(height: AppTokens.lg),
+                        const SizedBox(height: 16),
                         Text(
                           _status,
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                          ),
                         ),
                       ],
                     ),
@@ -1710,16 +1357,17 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
               fit: StackFit.expand,
               children: [
                 FaceEnrollmentWidget(
-                  key: ValueKey(_scannerGeneration),
+                  key: ValueKey(_gen),
                   controller: controller,
-                  initialStep: FaceEnrollmentStep.values[_currentStep - 1],
+                  initialStep: FaceEnrollmentStep.values[_step - 1],
                   onCaptured: _handleCapture,
                   onCompleted: () {},
-                  onError: (error) {
+                  onError: (e) {
+                    debugPrint('Recognition error: $e');
                     if (mounted) {
                       setState(() {
-                        _status = 'កំហុសក្នុងការស្គាល់មុខ៖ $error';
-                        _captureFailed = true;
+                        _status = 'មានបញ្ហាក្នុងការស្គាល់មុខ។';
+                        _failed = true;
                       });
                     }
                   },
@@ -1732,9 +1380,9 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
                         radius: 0.9,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.48),
+                          Colors.black.withValues(alpha: 0.45),
                         ],
-                        stops: const [0.48, 1],
+                        stops: const [0.5, 1],
                       ),
                     ),
                   ),
@@ -1744,156 +1392,160 @@ class _FaceScanScreenState extends State<_FaceScanScreen> {
       bottomNavigationBar: SafeArea(
         child: controller == null
             ? const SizedBox.shrink()
-            : Container(
-                padding: const EdgeInsets.fromLTRB(
-                  AppTokens.xl,
-                  AppTokens.lg,
-                  AppTokens.xl,
-                  AppTokens.lg,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xF20C1019),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppTokens.rXl),
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        for (
-                          var index = 1;
-                          index <= FaceEnrollmentStep.total;
-                          index++
-                        )
-                          Expanded(
-                            child: Container(
-                              height: 5,
-                              margin: EdgeInsets.only(
-                                right: index == FaceEnrollmentStep.total
-                                    ? 0
-                                    : AppTokens.sm,
-                              ),
-                              decoration: BoxDecoration(
-                                color: index <= _currentStep
-                                    ? const Color(0xFF75E3B0)
-                                    : Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(
-                                  AppTokens.rPill,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTokens.md),
-                    Text(
-                      _captureComplete
-                          ? _status
-                          : 'ជំហាន $_currentStep ក្នុង '
-                                '${FaceEnrollmentStep.total} · '
-                                '${_stepTitle(_currentStep)}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (_captureFailed) ...[
-                      const SizedBox(height: AppTokens.sm),
-                      Text(
-                        _status,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Color(0xFFFFB4AB)),
-                      ),
-                    ],
-                    if (_captureComplete || _captureFailed) ...[
-                      const SizedBox(height: AppTokens.md),
-                      FilledButton(
-                        onPressed: _captureComplete
-                            ? (widget.onCompleted ?? _retryCapture)
-                            : _retryCapture,
-                        child: Text(
-                          _captureComplete
-                              ? widget.completedButtonLabel
-                              : 'ព្យាយាមម្តងទៀត',
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+            : _ScanBar(
+                step: _step,
+                status: _status,
+                complete: _complete,
+                failed: _failed,
+                completedLabel: widget.completedButtonLabel,
+                onCompleted: widget.onCompleted,
+                onRetry: _retry,
+                stepTitle: (i) => FaceEnrollmentStep.values[i - 1].instruction,
               ),
       ),
     );
   }
-
-  String _stepTitle(int step) =>
-      FaceEnrollmentStep.values[step - 1].instruction;
 }
 
-class _CameraPermissionState extends StatelessWidget {
-  const _CameraPermissionState({
+class _ScanBar extends StatelessWidget {
+  const _ScanBar({
+    required this.step,
+    required this.status,
+    required this.complete,
+    required this.failed,
+    required this.completedLabel,
+    required this.onCompleted,
+    required this.onRetry,
+    required this.stepTitle,
+  });
+
+  final int step;
+  final String status;
+  final bool complete;
+  final bool failed;
+  final String completedLabel;
+  final VoidCallback? onCompleted;
+  final VoidCallback onRetry;
+  final String Function(int) stepTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF111827),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              for (var i = 1; i <= FaceEnrollmentStep.total; i++)
+                Expanded(
+                  child: Container(
+                    height: 3,
+                    margin: EdgeInsets.only(
+                      right: i == FaceEnrollmentStep.total ? 0 : 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: i <= step
+                          ? AppTokens.brand
+                          : Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            complete
+                ? status
+                : 'ជំហាន $step / ${FaceEnrollmentStep.total} · ${stepTitle(step)}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+              fontSize: 13.5,
+            ),
+          ),
+          if (failed) ...[
+            const SizedBox(height: 8),
+            Text(
+              status,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 13),
+            ),
+          ],
+          if (complete || failed) ...[
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: complete ? (onCompleted ?? onRetry) : onRetry,
+              child: Text(complete ? completedLabel : 'ព្យាយាមម្តងទៀត'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionState extends StatelessWidget {
+  const _PermissionState({
     required this.permanentlyDenied,
     required this.onAllow,
     required this.onOpenSettings,
   });
-
   final bool permanentlyDenied;
   final VoidCallback onAllow;
-  final VoidCallback onOpenSettings;
+  final Future<void> Function() onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(AppTokens.xl),
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.camera_alt_outlined,
-              size: 44,
+          Icon(
+            Icons.camera_alt_outlined,
+            size: 40,
+            color: Colors.white.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            permanentlyDenied
+                ? 'ត្រូវការការអនុញ្ញាតកាមេរ៉ា'
+                : 'ត្រូវការកាមេរ៉ា',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
               color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: AppTokens.xl),
+          const SizedBox(height: 8),
           Text(
             permanentlyDenied
-                ? 'អនុញ្ញាតឱ្យប្រើកាមេរ៉ានៅក្នុងការកំណត់'
-                : 'ត្រូវការការអនុញ្ញាតប្រើកាមេរ៉ា',
+                ? 'សូមបើកការអនុញ្ញាតប្រើកាមេរ៉ាក្នុងការកំណត់។'
+                : 'សូមអនុញ្ញាតឱ្យប្រើកាមេរ៉ាដើម្បីថតរូបមុខ។',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall
-                ?.copyWith(color: Colors.white),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 13.5,
+              height: 1.45,
+            ),
           ),
-          const SizedBox(height: AppTokens.sm),
-          Text(
-            permanentlyDenied
-                ? 'សូមអនុញ្ញាតឱ្យប្រើកាមេរ៉ានៅក្នុងការកំណត់ ដើម្បីថតរូបមុខ។'
-                : 'សូមអនុញ្ញាតឱ្យប្រើកាមេរ៉ា ដើម្បីណែនាំការថត និងរក្សាទុករូបមុខទាំងប្រាំមួយក្នុងទូរស័ព្ទនេះ។',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge
-                ?.copyWith(color: Colors.white70),
-          ),
-          const SizedBox(height: AppTokens.xl),
+          const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: permanentlyDenied ? onOpenSettings : onAllow,
+            onPressed: () => permanentlyDenied ? onOpenSettings() : onAllow(),
             icon: Icon(
               permanentlyDenied ? Icons.settings_outlined : Icons.camera_alt,
+              size: 18,
             ),
-            label: Text(
-              permanentlyDenied ? 'បើកការកំណត់' : 'អនុញ្ញាតប្រើកាមេរ៉ា',
-            ),
+            label: Text(permanentlyDenied ? 'បើកការកំណត់' : 'អនុញ្ញាត'),
           ),
         ],
       ),

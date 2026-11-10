@@ -1,11 +1,11 @@
 {
-    "name": "face_detection",
-    "short_name": "face_detection",
+    "name": "SV Face ID",
+    "short_name": "SV Face ID",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "SV Face ID",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

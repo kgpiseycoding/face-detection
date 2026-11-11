@@ -90,9 +90,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
         selectedCamera,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: Platform.isIOS
-            ? ImageFormatGroup.bgra8888
-            : ImageFormatGroup.yuv420,
+        imageFormatGroup: Platform.isAndroid
+            ? ImageFormatGroup.nv21
+            : ImageFormatGroup.bgra8888,
       );
       await controller.initialize();
       if (!mounted) {
@@ -250,6 +250,12 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
       bytes = image.planes.first.bytes;
       inputFormat = InputImageFormat.nv21;
       bytesPerRow = image.width;
+    } else if (image.format.group == ImageFormatGroup.yuv420 &&
+        image.planes.length == 1) {
+      // CameraX may label its packed NV21 plane as YUV420.
+      bytes = image.planes.first.bytes;
+      inputFormat = InputImageFormat.nv21;
+      bytesPerRow = image.width;
     } else {
       return null;
     }
@@ -277,7 +283,11 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen> {
       DeviceOrientation.landscapeRight: 270,
     };
     final deviceRotation =
-        deviceOrientations[_controller!.value.deviceOrientation] ?? 0;
+        deviceOrientations[_controller!.value.deviceOrientation];
+    if (deviceRotation == null) {
+      return InputImageRotationValue.fromRawValue(camera.sensorOrientation) ??
+          InputImageRotation.rotation0deg;
+    }
     final rotation = camera.lensDirection == CameraLensDirection.front
         ? (camera.sensorOrientation + deviceRotation) % 360
         : (camera.sensorOrientation - deviceRotation + 360) % 360;

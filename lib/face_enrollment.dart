@@ -252,7 +252,10 @@ class FaceEnrollmentController extends ChangeNotifier {
         eulerZ.abs() <= eulerToleranceDegrees;
     final rollIsValid = eulerZ.abs() <= eulerToleranceDegrees;
 
-    final imageSize = inputImage.metadata!.size;
+    final metadata = inputImage.metadata!;
+    final imageSize = metadata.rotation.rawValue % 180 == 0
+        ? metadata.size
+        : Size(metadata.size.height, metadata.size.width);
     final box = face.boundingBox;
     final faceCenterX = (box.left + box.width / 2) / imageSize.width;
     final faceCenterY = (box.top + box.height / 2) / imageSize.height;
@@ -345,6 +348,17 @@ class FaceEnrollmentController extends ChangeNotifier {
       bytes = image.planes.first.bytes;
       inputFormat = InputImageFormat.bgra8888;
       bytesPerRow = image.planes.first.bytesPerRow;
+    } else if (image.format.group == ImageFormatGroup.nv21 &&
+        image.planes.length == 1) {
+      bytes = image.planes.first.bytes;
+      inputFormat = InputImageFormat.nv21;
+      bytesPerRow = image.width;
+    } else if (image.format.group == ImageFormatGroup.yuv420 &&
+        image.planes.length == 1) {
+      // CameraX may retain the YUV420 label after converting the plane to NV21.
+      bytes = image.planes.first.bytes;
+      inputFormat = InputImageFormat.nv21;
+      bytesPerRow = image.width;
     } else {
       if (image.format.group != ImageFormatGroup.yuv420 ||
           image.planes.length != 3) {
@@ -381,7 +395,10 @@ class FaceEnrollmentController extends ChangeNotifier {
       DeviceOrientation.landscapeRight: 270,
     };
     final deviceRotation = orientations[controller.value.deviceOrientation];
-    if (deviceRotation == null) return InputImageRotation.rotation0deg;
+    if (deviceRotation == null) {
+      return InputImageRotationValue.fromRawValue(camera.sensorOrientation) ??
+          InputImageRotation.rotation0deg;
+    }
 
     final rotation = camera.lensDirection == CameraLensDirection.front
         ? (camera.sensorOrientation + deviceRotation) % 360
@@ -572,7 +589,7 @@ class _FaceEnrollmentWidgetState extends State<FaceEnrollmentWidget> {
   // Only returns a message if something is wrong (no face, out of bounds, etc.)
   String? _feedbackFor(FaceValidationState state) {
     if (state.errorMessage != null) {
-      return 'មានបញ្ហាក្នុងការពិនិត្យមុខ។ សូមកែទីតាំងមុខ ហើយសាកល្បងម្ដងទៀត។';
+      return 'មានបញ្ហាក្នុងការពិនិត្យមុខ៖ ${state.errorMessage}';
     }
     if (!state.faceDetected) {
       return state.cameraFrameReceived

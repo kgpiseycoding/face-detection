@@ -165,9 +165,13 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  final api = HrmFaceApi(
+    baseUrl: await AppConfig.loadBaseUrl(),
+    apiKey: AppConfig.apiKey,
+  );
+  runApp(MyApp(api: api));
 }
 
 class MyApp extends StatelessWidget {
@@ -386,6 +390,74 @@ class _UserListScreenState extends State<UserListScreen> {
     setState(() => _users = users);
   }
 
+  Future<void> _showServerSettings() async {
+    final formKey = GlobalKey<FormState>();
+    String? enteredUrl;
+    final baseUrl = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            initialValue: widget.api.baseUrl,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'URL',
+              hintText: 'https://hrm.example.com',
+            ),
+            onSaved: (value) => enteredUrl = value,
+            validator: (value) {
+              try {
+                HrmFaceApi.validateBaseUrl(value ?? '');
+                return null;
+              } on FormatException {
+                return 'សូមបញ្ចូល URL http ឬ https ត្រឹមត្រូវ។';
+              } on ArgumentError {
+                return 'សូមបញ្ចូល URL http ឬ https ត្រឹមត្រូវ។';
+              }
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('បោះបង់'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final form = formKey.currentState!;
+              if (form.validate()) {
+                form.save();
+                final value = enteredUrl?.trim();
+                if (value != null) {
+                  Navigator.of(dialogContext).pop(value);
+                }
+              }
+            },
+            child: const Text('រក្សាទុក'),
+          ),
+        ],
+      ),
+    );
+    if (baseUrl == null || !mounted) return;
+
+    try {
+      await AppConfig.saveBaseUrl(baseUrl);
+      widget.api.updateBaseUrl(baseUrl);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('បានរក្សាទុកអាសយដ្ឋានម៉ាស៊ីនមេ។')),
+      );
+    } on Exception catch (error) {
+      debugPrint('Could not save HRM server URL: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('មិនអាចរក្សាទុកអាសយដ្ឋានម៉ាស៊ីនមេបានទេ។')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -412,9 +484,20 @@ class _UserListScreenState extends State<UserListScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
                   children: [
-                    const SectionHeader(
-                      title: 'បុគ្គលិក',
-                      subtitle: 'មានប្រវត្តិរូបរក្សាទុកក្នុងទូរស័ព្ទនេះ',
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: SectionHeader(
+                            title: 'បុគ្គលិក',
+                            subtitle: 'មានប្រវត្តិរូបរក្សាទុកក្នុងទូរស័ព្ទនេះ',
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'កំណត់ម៉ាស៊ីនមេ HRM',
+                          onPressed: _showServerSettings,
+                          icon: const Icon(Icons.settings_outlined),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     if (_users.isEmpty)
@@ -512,6 +595,7 @@ class _UserTile extends StatelessWidget {
         .length;
     final hasHrm = hrmImageCount > 0;
     final hrmComplete = hrmImageCount == faceAngleKeys.length;
+    final isGreenStatus = enrolled || (hasHrm && hrmComplete);
     final statusLabel = enrolled
         ? 'បានរក្សាទុក'
         : hasHrm
@@ -526,7 +610,7 @@ class _UserTile extends StatelessWidget {
               ? AppTokens.success
               : AppTokens.brand
         : AppTokens.textSecondary;
-    final statusBackground = enrolled || (hasHrm && hrmComplete)
+    final statusBackground = isGreenStatus
         ? const Color(0xFFE6F5EE)
         : hasHrm
         ? const Color(0xFFE9EEFF)
@@ -544,6 +628,9 @@ class _UserTile extends StatelessWidget {
     final initial = user.name.trim().isEmpty
         ? '?'
         : user.name.trim()[0].toUpperCase();
+    final nameParts = user.name.trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.first;
+    final lastName = nameParts.skip(1).join(' ');
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -594,21 +681,43 @@ class _UserTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppTokens.textPrimary,
+                    if (lastName.isNotEmpty) ...[
+                      Text(
+                        firstName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTokens.textPrimary,
+                        ),
                       ),
-                    ),
+                      Text(
+                        lastName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTokens.textPrimary,
+                        ),
+                      ),
+                    ] else
+                      Text(
+                        user.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTokens.textPrimary,
+                        ),
+                      ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isGreenStatus ? 8 : 10,
+                        vertical: isGreenStatus ? 2 : 4,
                       ),
                       decoration: BoxDecoration(
                         color: statusBackground,
@@ -625,14 +734,16 @@ class _UserTile extends StatelessWidget {
                                       ? Icons.cloud_done_outlined
                                       : Icons.cloud_sync_outlined
                                 : Icons.face_outlined,
-                            size: 14,
+                            size: isGreenStatus || (hasHrm && !hrmComplete)
+                                ? 12
+                                : 14,
                             color: statusColor,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: isGreenStatus ? 3 : 4),
                           Text(
                             statusLabel,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: isGreenStatus ? 11 : 12,
                               color: statusColor,
                               fontWeight: FontWeight.w500,
                             ),

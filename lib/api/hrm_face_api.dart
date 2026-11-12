@@ -12,16 +12,12 @@ class HrmFaceApi {
     required String baseUrl,
     required String apiKey,
     http.Client? client,
-  }) : _baseUri = Uri.parse(baseUrl),
+  }) : _baseUri = _parseBaseUri(baseUrl),
        apiKey = apiKey.trim(),
        _client = client ?? http.Client(),
-       _ownsClient = client == null {
-    if (!_baseUri.hasScheme || !_baseUri.hasAuthority) {
-      throw ArgumentError.value(baseUrl, 'baseUrl', 'Must be an absolute URL.');
-    }
-  }
+       _ownsClient = client == null;
 
-  final Uri _baseUri;
+  Uri _baseUri;
   final String apiKey;
   final http.Client _client;
   final bool _ownsClient;
@@ -29,6 +25,14 @@ class HrmFaceApi {
   String get baseUrl => _baseUri.toString();
   bool get hasApiKey => apiKey.trim().isNotEmpty;
   bool get hasPlaceholderBaseUrl => _baseUri.host == 'hrm-uat.yourcompany.com';
+
+  void updateBaseUrl(String baseUrl) {
+    _baseUri = _parseBaseUri(baseUrl);
+  }
+
+  static void validateBaseUrl(String baseUrl) {
+    _parseBaseUri(baseUrl);
+  }
 
   void close() {
     if (_ownsClient) _client.close();
@@ -209,5 +213,23 @@ class HrmFaceApi {
     if (!faceAngleKeys.contains(angle)) {
       throw ArgumentError.value(angle, 'angle', 'Unknown face angle.');
     }
+  }
+
+  static Uri _parseBaseUri(String baseUrl) {
+    final uri = Uri.parse(baseUrl.trim());
+    if (!uri.hasScheme ||
+        !uri.hasAuthority ||
+        uri.host.isEmpty ||
+        !{'http', 'https'}.contains(uri.scheme) ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment) {
+      throw ArgumentError.value(
+        baseUrl,
+        'baseUrl',
+        'Must be an absolute HTTP or HTTPS URL without credentials, query, or fragment.',
+      );
+    }
+    return uri;
   }
 }

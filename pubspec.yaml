@@ -27,6 +27,7 @@ dependencies:
   share_plus: ^13.3.1
   face_verification: ^0.3.9
   image: ^4.9.2
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:

@@ -8,8 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:face_detection/api/hrm_face_api.dart';
+import 'package:face_detection/config/app_config.dart';
 import 'package:face_detection/face_store.dart';
 import 'package:face_detection/face_enrollment.dart';
 import 'package:face_detection/face_identity_service.dart';
@@ -114,6 +116,39 @@ void main() {
 
     api.close();
     client.close();
+  });
+
+  testWidgets('server URL can be changed and is saved on the device', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final api = HrmFaceApi(
+      baseUrl: 'https://old.hrm.test',
+      apiKey: 'test-key',
+      client: MockClient((_) async => http.Response('{}', 200)),
+    );
+    await tester.pumpWidget(
+      MyApp(
+        store: _FakeFaceStore(),
+        identityService: _FakeFaceIdentityService(),
+        api: api,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('កំណត់ម៉ាស៊ីនមេ HRM'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField),
+      'https://new.hrm.test/service',
+    );
+    await tester.tap(find.text('រក្សាទុក'));
+    await tester.pumpAndSettle();
+
+    expect(api.baseUrl, 'https://new.hrm.test/service');
+    expect(await AppConfig.loadBaseUrl(), 'https://new.hrm.test/service');
+
+    api.close();
   });
 
   testWidgets('employee picker labels face enrollment status', (tester) async {

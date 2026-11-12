@@ -38,6 +38,31 @@ void main() {
     client.close();
   });
 
+  test('uses an updated base URL for subsequent requests', () async {
+    http.Request? sentRequest;
+    final client = MockClient((request) async {
+      sentRequest = request;
+      return http.Response('{"employees":[]}', 200);
+    });
+    final api = HrmFaceApi(
+      baseUrl: 'https://old.hrm.test',
+      apiKey: 'test-key',
+      client: client,
+    );
+
+    api.updateBaseUrl('https://new.hrm.test/hrm');
+    await api.employees();
+
+    expect(api.baseUrl, 'https://new.hrm.test/hrm');
+    expect(
+      sentRequest!.url.toString(),
+      'https://new.hrm.test/hrm/api/face-recognition/employees'
+      '?search&status=ACTIVE&page=0&size=500',
+    );
+
+    client.close();
+  });
+
   test('requests active employees with the configured API key', () async {
     http.Request? sentRequest;
     final client = MockClient((request) async {

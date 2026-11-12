@@ -401,34 +401,59 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          employee.displayName.isEmpty
-                              ? employee.employeeCode
-                              : employee.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        if (employee.firstName.isNotEmpty &&
+                            employee.lastName.isNotEmpty)
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                employee.firstName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                employee.lastName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ],
+                          )
+                        else
+                          Text(
+                            employee.displayName.isEmpty
+                                ? employee.employeeCode
+                                : employee.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         const SizedBox(height: 4),
                         Text(
                           employee.departmentName.isEmpty
                               ? employee.employeeCode
                               : '${employee.employeeCode} · ${employee.departmentName}',
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            _buildEnrollmentStatus(employee.faceEnrolled),
-                            if (widget.selectionOnly)
-                              _buildRegisteredStatus(isRegistered),
-                          ],
+                        Flexible(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              _buildEnrollmentStatus(employee.faceEnrolled),
+                              if (widget.selectionOnly)
+                                _buildRegisteredStatus(isRegistered),
+                            ],
+                          ),
                         ),
                       ],
                     ),

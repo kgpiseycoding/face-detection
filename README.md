@@ -24,6 +24,10 @@ the phone's share sheet. Sharing requires confirmation and sends the selected
 photos outside this app. The Verify face screen checks a still photo captured
 from the phone camera; it is not a continuous CCTV connection.
 
+Change the HRM server address from the settings button on the employee screen.
+The address is saved on the device and applies to subsequent API requests. A
+build-time default can also be supplied with `--dart-define=HRM_BASE_URL=...`.
+
 Face matching can return false matches or reject the right person depending on
 lighting, camera quality, pose, and the threshold. It is not liveness detection
 or a secure authentication method and must not be used by itself for access
